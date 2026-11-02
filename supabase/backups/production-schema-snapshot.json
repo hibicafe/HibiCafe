@@ -1,0 +1,3568 @@
+{
+  "tables": [
+    {
+      "name": "app_data",
+      "columns": [
+        {
+          "name": "key",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "value",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX app_data_pkey ON public.app_data USING btree (key)"
+      ],
+      "constraints": [
+        {
+          "name": "app_data_pkey",
+          "definition": "PRIMARY KEY (key)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "audit_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "default": null,
+          "identity": "d",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "username",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "entity_type",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "entity_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "details",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX audit_logs_created_at_idx ON public.audit_logs USING btree (created_at DESC)",
+        "CREATE UNIQUE INDEX audit_logs_pkey ON public.audit_logs USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "audit_logs_auth_user_id_fkey",
+          "definition": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+        },
+        {
+          "name": "audit_logs_pkey",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "cash_movements",
+      "columns": [
+        {
+          "name": "id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "entry_time",
+          "type": "time without time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "movement_type",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cashier",
+          "type": "text",
+          "default": "'Staff'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Active'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "voided_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "voided_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "void_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX cash_movements_business_date_idx ON public.cash_movements USING btree (business_date DESC)",
+        "CREATE UNIQUE INDEX cash_movements_pkey ON public.cash_movements USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "cash_movements_amount_check",
+          "definition": "CHECK ((amount > (0)::numeric))"
+        },
+        {
+          "name": "cash_movements_movement_type_check",
+          "definition": "CHECK ((movement_type = ANY (ARRAY['In'::text, 'Out'::text])))"
+        },
+        {
+          "name": "cash_movements_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "cash_movements_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Active'::text, 'Voided'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "cash_shifts",
+      "columns": [
+        {
+          "name": "id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "shift_number",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "shift_name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Open'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "opened_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "opened_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "opening_cash",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "closed_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "expected_cash",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "actual_cash_counted",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "variance",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "variance_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "cash_sales",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "gcash_sales",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "grab_sales",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cash_in",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cash_out",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "expenses",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "transaction_count",
+          "type": "integer",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cups_sold",
+          "type": "integer",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX cash_shifts_business_date_idx ON public.cash_shifts USING btree (business_date DESC, shift_number DESC)",
+        "CREATE UNIQUE INDEX cash_shifts_business_date_shift_number_key ON public.cash_shifts USING btree (business_date, shift_number)",
+        "CREATE UNIQUE INDEX cash_shifts_one_open_per_day_idx ON public.cash_shifts USING btree (business_date) WHERE (status = 'Open'::text)",
+        "CREATE UNIQUE INDEX cash_shifts_pkey ON public.cash_shifts USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "cash_shifts_actual_cash_counted_check",
+          "definition": "CHECK (((actual_cash_counted IS NULL) OR (actual_cash_counted >= (0)::numeric)))"
+        },
+        {
+          "name": "cash_shifts_business_date_shift_number_key",
+          "definition": "UNIQUE (business_date, shift_number)"
+        },
+        {
+          "name": "cash_shifts_cups_sold_check",
+          "definition": "CHECK ((cups_sold >= 0))"
+        },
+        {
+          "name": "cash_shifts_opening_cash_check",
+          "definition": "CHECK ((opening_cash >= (0)::numeric))"
+        },
+        {
+          "name": "cash_shifts_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "cash_shifts_shift_number_check",
+          "definition": "CHECK ((shift_number >= 1))"
+        },
+        {
+          "name": "cash_shifts_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Open'::text, 'Closed'::text])))"
+        },
+        {
+          "name": "cash_shifts_transaction_count_check",
+          "definition": "CHECK ((transaction_count >= 0))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "daily_expenses",
+      "columns": [
+        {
+          "name": "id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "entry_time",
+          "type": "time without time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cashier",
+          "type": "text",
+          "default": "'Staff'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Active'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "voided_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "voided_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "void_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX daily_expenses_business_date_idx ON public.daily_expenses USING btree (business_date DESC)",
+        "CREATE UNIQUE INDEX daily_expenses_pkey ON public.daily_expenses USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "daily_expenses_amount_check",
+          "definition": "CHECK ((amount > (0)::numeric))"
+        },
+        {
+          "name": "daily_expenses_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "daily_expenses_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Active'::text, 'Voided'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "eod_reconciliations",
+      "columns": [
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "opening",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "actual",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "expected",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "variance",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "total_cash_sales",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cash_in",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cash_out",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "total_gcash_sales",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "total_expenses",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "variance_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "locked",
+          "type": "boolean",
+          "default": "false",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "reconciled_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "reconciled_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "unlocked_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "unlocked_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX eod_reconciliations_pkey ON public.eod_reconciliations USING btree (business_date)"
+      ],
+      "constraints": [
+        {
+          "name": "eod_reconciliations_pkey",
+          "definition": "PRIMARY KEY (business_date)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "fund_balance_snapshots",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "snapshot_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cash_balance",
+          "type": "numeric(14,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "gcash_balance",
+          "type": "numeric(14,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "bank_balance",
+          "type": "numeric(14,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "snapshot_type",
+          "type": "text",
+          "default": "'daily'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by_name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX fund_balance_snapshots_pkey ON public.fund_balance_snapshots USING btree (id)",
+        "CREATE INDEX fund_balance_snapshots_snapshot_at_idx ON public.fund_balance_snapshots USING btree (snapshot_at DESC)"
+      ],
+      "constraints": [
+        {
+          "name": "fund_balance_snapshots_created_by_fkey",
+          "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+        },
+        {
+          "name": "fund_balance_snapshots_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "fund_balance_snapshots_snapshot_type_check",
+          "definition": "CHECK ((snapshot_type = ANY (ARRAY['daily'::text, 'manual'::text, 'pre_archive'::text, 'reconciliation'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "fund_transactions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": "hibi_business_day()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "transaction_type",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "direction",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "from_account",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "to_account",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "reference",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Active'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "void_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "voided_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "voided_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by_name",
+          "type": "text",
+          "default": "''::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX fund_transactions_business_date_idx ON public.fund_transactions USING btree (business_date DESC)",
+        "CREATE INDEX fund_transactions_created_at_idx ON public.fund_transactions USING btree (created_at DESC)",
+        "CREATE UNIQUE INDEX fund_transactions_pkey ON public.fund_transactions USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "fund_transactions_account_check",
+          "definition": "CHECK ((account = ANY (ARRAY['Cash'::text, 'GCash'::text, 'Bank'::text])))"
+        },
+        {
+          "name": "fund_transactions_amount_check",
+          "definition": "CHECK ((amount > (0)::numeric))"
+        },
+        {
+          "name": "fund_transactions_created_by_fkey",
+          "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id)"
+        },
+        {
+          "name": "fund_transactions_description_check",
+          "definition": "CHECK ((length(btrim(description)) > 0))"
+        },
+        {
+          "name": "fund_transactions_direction_check",
+          "definition": "CHECK ((direction = ANY (ARRAY['In'::text, 'Out'::text])))"
+        },
+        {
+          "name": "fund_transactions_from_account_check",
+          "definition": "CHECK ((from_account = ANY (ARRAY['Cash'::text, 'GCash'::text, 'Bank'::text])))"
+        },
+        {
+          "name": "fund_transactions_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "fund_transactions_shape_check",
+          "definition": "CHECK ((((transaction_type = 'Transfer'::text) AND (account IS NULL) AND (direction IS NULL) AND (from_account IS NOT NULL) AND (to_account IS NOT NULL) AND (from_account <> to_account)) OR ((transaction_type <> 'Transfer'::text) AND (account IS NOT NULL) AND (direction IS NOT NULL) AND (from_account IS NULL) AND (to_account IS NULL))))"
+        },
+        {
+          "name": "fund_transactions_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Active'::text, 'Voided'::text])))"
+        },
+        {
+          "name": "fund_transactions_to_account_check",
+          "definition": "CHECK ((to_account = ANY (ARRAY['Cash'::text, 'GCash'::text, 'Bank'::text])))"
+        },
+        {
+          "name": "fund_transactions_transaction_type_check",
+          "definition": "CHECK ((transaction_type = ANY (ARRAY['Opening Balance'::text, 'Money In'::text, 'Money Out'::text, 'GrabFood Settlement'::text, 'Adjustment'::text, 'Transfer'::text])))"
+        },
+        {
+          "name": "fund_transactions_voided_by_fkey",
+          "definition": "FOREIGN KEY (voided_by) REFERENCES auth.users(id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "hibi_fee_rates",
+      "columns": [
+        {
+          "name": "effective_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "rate",
+          "type": "numeric(6,5)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX hibi_fee_rates_pkey ON public.hibi_fee_rates USING btree (effective_date)"
+      ],
+      "constraints": [
+        {
+          "name": "hibi_fee_rates_pkey",
+          "definition": "PRIMARY KEY (effective_date)"
+        },
+        {
+          "name": "hibi_fee_rates_rate_check",
+          "definition": "CHECK (((rate >= (0)::numeric) AND (rate <= (1)::numeric)))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "hibi_order_refs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_number",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "grab_code",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX hibi_order_refs_grab_code_uq ON public.hibi_order_refs USING btree (lower(TRIM(BOTH FROM grab_code))) WHERE ((grab_code IS NOT NULL) AND (TRIM(BOTH FROM grab_code) <> ''::text))",
+        "CREATE UNIQUE INDEX hibi_order_refs_order_number_uq ON public.hibi_order_refs USING btree (lower(TRIM(BOTH FROM order_number)))",
+        "CREATE UNIQUE INDEX hibi_order_refs_pkey ON public.hibi_order_refs USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "hibi_order_refs_auth_user_id_fkey",
+          "definition": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id)"
+        },
+        {
+          "name": "hibi_order_refs_pkey",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "hibi_requests",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "actor",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "result",
+          "type": "jsonb",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX hibi_requests_pkey ON public.hibi_requests USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "hibi_requests_pkey",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "monthly_report_log",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "report_month",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "trigger_type",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "recipients",
+          "type": "text[]",
+          "default": "'{}'::text[]",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "filename",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "resend_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "summary",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "sent_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX monthly_report_log_auto_guard ON public.monthly_report_log USING btree (report_month) WHERE ((trigger_type = 'automatic'::text) AND (status = ANY (ARRAY['generating'::text, 'sent'::text])))",
+        "CREATE INDEX monthly_report_log_month_idx ON public.monthly_report_log USING btree (report_month, created_at DESC)",
+        "CREATE UNIQUE INDEX monthly_report_log_pkey ON public.monthly_report_log USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "monthly_report_log_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "monthly_report_log_report_month_check",
+          "definition": "CHECK ((report_month ~ '^\\d{4}-\\d{2}$'::text))"
+        },
+        {
+          "name": "monthly_report_log_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['generating'::text, 'sent'::text, 'failed'::text, 'downloaded'::text])))"
+        },
+        {
+          "name": "monthly_report_log_trigger_type_check",
+          "definition": "CHECK ((trigger_type = ANY (ARRAY['automatic'::text, 'manual'::text, 'download'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "monthly_report_settings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "smallint",
+          "default": "1",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "automatic_enabled",
+          "type": "boolean",
+          "default": "true",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "recipients",
+          "type": "text[]",
+          "default": "ARRAY['djohargamboa@gmail.com'::text]",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "default": "'Asia/Manila'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX monthly_report_settings_pkey ON public.monthly_report_settings USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "monthly_report_settings_id_check",
+          "definition": "CHECK ((id = 1))"
+        },
+        {
+          "name": "monthly_report_settings_pkey",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "online_order_details",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "customer_name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "customer_phone",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "customer_note",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "payment_provider",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "payment_reference",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "tracking_token_hash",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "payment_verified_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "payment_verified_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "pickup_time",
+          "type": "time without time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX online_order_details_pkey ON public.online_order_details USING btree (order_id)"
+      ],
+      "constraints": [
+        {
+          "name": "online_order_details_name_len",
+          "definition": "CHECK (((length(btrim(customer_name)) >= 1) AND (length(btrim(customer_name)) <= 100)))"
+        },
+        {
+          "name": "online_order_details_order_id_fkey",
+          "definition": "FOREIGN KEY (order_id) REFERENCES pos_orders(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "online_order_details_payment_provider_check",
+          "definition": "CHECK ((payment_provider = ANY (ARRAY['Cash'::text, 'GCash QR'::text, 'BPI QR'::text])))"
+        },
+        {
+          "name": "online_order_details_phone_len",
+          "definition": "CHECK (((length(btrim(customer_phone)) >= 7) AND (length(btrim(customer_phone)) <= 30)))"
+        },
+        {
+          "name": "online_order_details_pkey",
+          "definition": "PRIMARY KEY (order_id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "online_product_availability",
+      "columns": [
+        {
+          "name": "product_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX online_product_availability_pkey ON public.online_product_availability USING btree (product_id)"
+      ],
+      "constraints": [
+        {
+          "name": "online_product_availability_pkey",
+          "definition": "PRIMARY KEY (product_id)"
+        },
+        {
+          "name": "online_product_availability_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Available'::text, 'SoldOut'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "owner_expenses",
+      "columns": [
+        {
+          "name": "id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "entry_time",
+          "type": "time without time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": "'Other'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "payment_method",
+          "type": "text",
+          "default": "'Cash'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "entered_by",
+          "type": "text",
+          "default": "'Superuser'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Active'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "voided_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "voided_by",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "void_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX owner_expenses_business_date_idx ON public.owner_expenses USING btree (business_date DESC)",
+        "CREATE UNIQUE INDEX owner_expenses_pkey ON public.owner_expenses USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "owner_expenses_amount_check",
+          "definition": "CHECK ((amount > (0)::numeric))"
+        },
+        {
+          "name": "owner_expenses_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "owner_expenses_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Active'::text, 'Voided'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "pos_order_items",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "product_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "size",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "is_drink",
+          "type": "boolean",
+          "default": "false",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "qty",
+          "type": "integer",
+          "default": "1",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "line_total",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "addons",
+          "type": "jsonb",
+          "default": "'[]'::jsonb",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_order_items_order ON public.pos_order_items USING btree (order_id)",
+        "CREATE UNIQUE INDEX pos_order_items_pkey ON public.pos_order_items USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "pos_order_items_order_id_fkey",
+          "definition": "FOREIGN KEY (order_id) REFERENCES pos_orders(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "pos_order_items_pkey",
+          "definition": "PRIMARY KEY (id)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "pos_orders",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_number",
+          "type": "integer",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_code",
+          "type": "text",
+          "default": "('HIBI-'::text || lpad((order_number)::text, 4, '0'::text))",
+          "identity": "",
+          "not_null": false,
+          "generated": "s"
+        },
+        {
+          "name": "order_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_time",
+          "type": "time without time zone",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "default": "'Walk-in'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "grab_code",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "subtotal",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "discount_type",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "discount_amount",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "total",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "payment_method",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "amount_received",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "cash_amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "gcash_amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "change_given",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "gcash_ref",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Completed'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cashier",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "legacy_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "legacy_order_number",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "payment_status",
+          "type": "text",
+          "default": "'Paid'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "grab_fee_rate",
+          "type": "numeric(6,5)",
+          "default": "0.25",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "service_type",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX hibi_grab_reference_unique ON public.pos_orders USING btree (order_date, lower(regexp_replace(btrim(grab_code), '^(GF[[:space:]-]*)+'::text, ''::text, 'i'::text))) WHERE ((source = 'GrabFood'::text) AND (status <> ALL (ARRAY['Cancelled'::text, 'LegacyCancelled'::text])) AND (NULLIF(btrim(grab_code), ''::text) IS NOT NULL))",
+        "CREATE INDEX idx_pos_orders_cashier ON public.pos_orders USING btree (cashier)",
+        "CREATE INDEX idx_pos_orders_date ON public.pos_orders USING btree (order_date)",
+        "CREATE INDEX idx_pos_orders_source ON public.pos_orders USING btree (source)",
+        "CREATE UNIQUE INDEX pos_orders_pkey ON public.pos_orders USING btree (id)",
+        "CREATE UNIQUE INDEX pos_orders_unique_order ON public.pos_orders USING btree (order_number)"
+      ],
+      "constraints": [
+        {
+          "name": "pos_orders_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "pos_orders_service_type_check",
+          "definition": "CHECK (((service_type IS NULL) OR (service_type = ANY (ARRAY['Dine In'::text, 'Take Out'::text]))))"
+        },
+        {
+          "name": "pos_orders_unique_order",
+          "definition": "UNIQUE (order_number)"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "pos_refunds",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "amount",
+          "type": "numeric(12,2)",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "cash_amount",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "gcash_amount",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "grab_amount",
+          "type": "numeric(12,2)",
+          "default": "0",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "prepared",
+          "type": "boolean",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "approved_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "approved_by_name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "voided_at",
+          "type": "timestamp with time zone",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "voided_by",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "void_reason",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX pos_refunds_active_order_idx ON public.pos_refunds USING btree (order_id) WHERE (voided_at IS NULL)",
+        "CREATE INDEX pos_refunds_date_idx ON public.pos_refunds USING btree (business_date)",
+        "CREATE INDEX pos_refunds_order_idx ON public.pos_refunds USING btree (order_id)",
+        "CREATE UNIQUE INDEX pos_refunds_pkey ON public.pos_refunds USING btree (id)"
+      ],
+      "constraints": [
+        {
+          "name": "pos_refunds_amount_check",
+          "definition": "CHECK ((amount >= (0)::numeric))"
+        },
+        {
+          "name": "pos_refunds_check",
+          "definition": "CHECK (((cash_amount >= (0)::numeric) AND (gcash_amount >= (0)::numeric) AND (grab_amount >= (0)::numeric)))"
+        },
+        {
+          "name": "pos_refunds_check1",
+          "definition": "CHECK ((amount = ((cash_amount + gcash_amount) + grab_amount)))"
+        },
+        {
+          "name": "pos_refunds_kind_check",
+          "definition": "CHECK ((kind = ANY (ARRAY['Refund'::text, 'Cancellation'::text])))"
+        },
+        {
+          "name": "pos_refunds_order_id_fkey",
+          "definition": "FOREIGN KEY (order_id) REFERENCES pos_orders(id)"
+        },
+        {
+          "name": "pos_refunds_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "pos_refunds_reason_check",
+          "definition": "CHECK ((length(btrim(reason)) > 0))"
+        },
+        {
+          "name": "pos_refunds_voided_by_fkey",
+          "definition": "FOREIGN KEY (voided_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "product_availability",
+      "columns": [
+        {
+          "name": "product_id",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "default": "'Available'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "default": "hibi_business_day()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_by_name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "default": "auth.uid()",
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX product_availability_pkey ON public.product_availability USING btree (product_id)"
+      ],
+      "constraints": [
+        {
+          "name": "product_availability_pkey",
+          "definition": "PRIMARY KEY (product_id)"
+        },
+        {
+          "name": "product_availability_status_check",
+          "definition": "CHECK ((status = ANY (ARRAY['Available'::text, 'SoldOut'::text])))"
+        }
+      ],
+      "rls_enabled": true
+    },
+    {
+      "name": "user_profiles",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "username",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "display_name",
+          "type": "text",
+          "default": null,
+          "identity": "",
+          "not_null": false,
+          "generated": ""
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "default": "'user'::text",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "default": "true",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "permissions",
+          "type": "jsonb",
+          "default": "'{}'::jsonb",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "default": "now()",
+          "identity": "",
+          "not_null": true,
+          "generated": ""
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX user_profiles_auth_user_id_idx ON public.user_profiles USING btree (auth_user_id)",
+        "CREATE UNIQUE INDEX user_profiles_auth_user_id_key ON public.user_profiles USING btree (auth_user_id)",
+        "CREATE UNIQUE INDEX user_profiles_pkey ON public.user_profiles USING btree (id)",
+        "CREATE INDEX user_profiles_username_idx ON public.user_profiles USING btree (lower(username))",
+        "CREATE UNIQUE INDEX user_profiles_username_key ON public.user_profiles USING btree (username)"
+      ],
+      "constraints": [
+        {
+          "name": "user_profiles_auth_user_id_fkey",
+          "definition": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "user_profiles_auth_user_id_key",
+          "definition": "UNIQUE (auth_user_id)"
+        },
+        {
+          "name": "user_profiles_pkey",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "user_profiles_role_check",
+          "definition": "CHECK ((role = ANY (ARRAY['user'::text, 'superuser'::text])))"
+        },
+        {
+          "name": "user_profiles_username_key",
+          "definition": "UNIQUE (username)"
+        }
+      ],
+      "rls_enabled": true
+    }
+  ],
+  "policies": [
+    {
+      "name": "hibi_app_data_insert",
+      "check": "(((key = ANY (ARRAY['hibi-menu'::text, 'hibi-addons'::text])) AND hibi_has_permission('menu'::text)) OR ((key = 'hibi-settings'::text) AND hibi_has_permission('settings'::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "app_data",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "hibi_app_data_select",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "app_data",
+      "using": "hibi_is_active_user()",
+      "command": "SELECT"
+    },
+    {
+      "name": "hibi_app_data_update",
+      "check": "(((key = ANY (ARRAY['hibi-menu'::text, 'hibi-addons'::text])) AND hibi_has_permission('menu'::text)) OR ((key = 'hibi-settings'::text) AND hibi_has_permission('settings'::text)))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "app_data",
+      "using": "(((key = ANY (ARRAY['hibi-menu'::text, 'hibi-addons'::text])) AND hibi_has_permission('menu'::text)) OR ((key = 'hibi-settings'::text) AND hibi_has_permission('settings'::text)))",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_audit_client_insert",
+      "check": "(hibi_is_active_user() AND (auth_user_id = auth.uid()) AND (action !~~ 'db.%'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "audit_logs",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_audit_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "audit_logs",
+      "using": "hibi_is_superuser()",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_insert",
+      "check": "hibi_has_permission('expenses'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cash_movements",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cash_movements",
+      "using": "(hibi_has_permission('expenses'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_update",
+      "check": "hibi_has_permission('expenses'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cash_movements",
+      "using": "hibi_has_permission('expenses'::text)",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_insert",
+      "check": "hibi_has_permission('expenses'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cash_shifts",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cash_shifts",
+      "using": "(hibi_has_permission('expenses'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_update",
+      "check": "hibi_has_permission('expenses'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "cash_shifts",
+      "using": "hibi_has_permission('expenses'::text)",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_insert",
+      "check": "hibi_has_permission('expenses'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "daily_expenses",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "daily_expenses",
+      "using": "(hibi_has_permission('expenses'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_update",
+      "check": "hibi_has_permission('expenses'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "daily_expenses",
+      "using": "hibi_has_permission('expenses'::text)",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_eod_insert",
+      "check": "hibi_has_permission('reports'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "eod_reconciliations",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_eod_update",
+      "check": "hibi_has_permission('reports'::text)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "eod_reconciliations",
+      "using": "hibi_has_permission('reports'::text)",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "eod_reconciliations",
+      "using": "(hibi_has_permission('expenses'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "authenticated_reconciliation_snapshot_insert",
+      "check": "((snapshot_type = 'reconciliation'::text) AND (created_by = auth.uid()) AND hibi_has_permission('reports'::text) AND (EXISTS ( SELECT 1\n   FROM eod_reconciliations e\n  WHERE ((e.business_date = fund_balance_snapshots.business_date) AND (e.locked = true) AND (e.reconciled_at IS NOT NULL)))))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "fund_balance_snapshots",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "fund_balance_snapshots_superuser_insert",
+      "check": "(hibi_is_superuser() AND (created_by = auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "fund_balance_snapshots",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "fund_balance_snapshots_superuser_select",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "fund_balance_snapshots",
+      "using": "hibi_is_superuser()",
+      "command": "SELECT"
+    },
+    {
+      "name": "fund_transactions_superuser_insert",
+      "check": "(hibi_is_superuser() AND (created_by = auth.uid()))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "fund_transactions",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "fund_transactions_superuser_select",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "fund_transactions",
+      "using": "hibi_is_superuser()",
+      "command": "SELECT"
+    },
+    {
+      "name": "fund_transactions_superuser_update",
+      "check": "hibi_is_superuser()",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "fund_transactions",
+      "using": "hibi_is_superuser()",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "hibi_fee_rates",
+      "using": "hibi_is_active_user()",
+      "command": "SELECT"
+    },
+    {
+      "name": "hibi_order_refs_insert",
+      "check": "(auth_user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "hibi_order_refs",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "hibi_order_refs_select",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "hibi_order_refs",
+      "using": "true",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_request_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "hibi_requests",
+      "using": "((actor = auth.uid()) AND hibi_is_active_user())",
+      "command": "SELECT"
+    },
+    {
+      "name": "superusers read monthly report log",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "monthly_report_log",
+      "using": "hibi_is_superuser()",
+      "command": "SELECT"
+    },
+    {
+      "name": "superusers insert monthly report settings",
+      "check": "hibi_is_superuser()",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "monthly_report_settings",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "superusers read monthly report settings",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "monthly_report_settings",
+      "using": "hibi_is_superuser()",
+      "command": "SELECT"
+    },
+    {
+      "name": "superusers update monthly report settings",
+      "check": "hibi_is_superuser()",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "monthly_report_settings",
+      "using": "hibi_is_superuser()",
+      "command": "UPDATE"
+    },
+    {
+      "name": "Public can read online product availability",
+      "check": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "table": "online_product_availability",
+      "using": "true",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_owner_insert",
+      "check": "hibi_is_superuser()",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "owner_expenses",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_owner_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "owner_expenses",
+      "using": "hibi_is_superuser()",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_owner_update",
+      "check": "hibi_is_superuser()",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "owner_expenses",
+      "using": "hibi_is_superuser()",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "pos_order_items",
+      "using": "(hibi_has_permission('orders'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "pos_orders",
+      "using": "(hibi_has_permission('orders'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "pos_refunds",
+      "using": "(hibi_has_permission('orders'::text) OR hibi_has_permission('reports'::text) OR hibi_has_permission('dashboard'::text))",
+      "command": "SELECT"
+    },
+    {
+      "name": "hibi_product_availability_insert",
+      "check": "((hibi_has_permission('pos'::text) OR hibi_has_permission('menu'::text)) AND (hibi_is_superuser() OR (business_date = hibi_business_day())))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "product_availability",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "hibi_product_availability_select",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "product_availability",
+      "using": "hibi_is_active_user()",
+      "command": "SELECT"
+    },
+    {
+      "name": "hibi_product_availability_update",
+      "check": "((hibi_has_permission('pos'::text) OR hibi_has_permission('menu'::text)) AND (hibi_is_superuser() OR (business_date = hibi_business_day())))",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "product_availability",
+      "using": "(hibi_has_permission('pos'::text) OR hibi_has_permission('menu'::text))",
+      "command": "UPDATE"
+    },
+    {
+      "name": "p1_profile_insert",
+      "check": "hibi_is_superuser()",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "using": null,
+      "command": "INSERT"
+    },
+    {
+      "name": "p1_profile_read",
+      "check": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "using": "((auth_user_id = auth.uid()) OR hibi_is_superuser())",
+      "command": "SELECT"
+    },
+    {
+      "name": "p1_profile_update",
+      "check": "((auth_user_id = auth.uid()) OR hibi_is_superuser())",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "using": "((auth_user_id = auth.uid()) OR hibi_is_superuser())",
+      "command": "UPDATE"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "app_data",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "app_data",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "app_data",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "INSERT",
+      "table": "cash_movements",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "UPDATE",
+      "table": "cash_movements",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "hibi_cash_movements_protect_update",
+      "event": "UPDATE",
+      "table": "cash_movements",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_protect_financial_update()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "cash_movements",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "cash_movements",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "cash_movements",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "INSERT",
+      "table": "cash_shifts",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "UPDATE",
+      "table": "cash_shifts",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "guard_hibi_shift_reopen",
+      "event": "UPDATE",
+      "table": "cash_shifts",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION guard_hibi_shift_reopen()"
+    },
+    {
+      "name": "hibi_cash_shift_protect_update",
+      "event": "UPDATE",
+      "table": "cash_shifts",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_protect_shift_update()"
+    },
+    {
+      "name": "hibi_cash_shift_validate_insert",
+      "event": "INSERT",
+      "table": "cash_shifts",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_validate_shift_insert()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "cash_shifts",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "cash_shifts",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "cash_shifts",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "INSERT",
+      "table": "daily_expenses",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "UPDATE",
+      "table": "daily_expenses",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "hibi_daily_expenses_protect_update",
+      "event": "UPDATE",
+      "table": "daily_expenses",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_protect_financial_update()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "daily_expenses",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "daily_expenses",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "daily_expenses",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "INSERT",
+      "table": "eod_reconciliations",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "UPDATE",
+      "table": "eod_reconciliations",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "hibi_eod_protect_update",
+      "event": "UPDATE",
+      "table": "eod_reconciliations",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_protect_eod_update()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "eod_reconciliations",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "eod_reconciliations",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "eod_reconciliations",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "hibi_fee_rates",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "hibi_fee_rates",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "hibi_fee_rates",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "INSERT",
+      "table": "owner_expenses",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "aa_phase1_guard",
+      "event": "UPDATE",
+      "table": "owner_expenses",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_financial_guard_v2()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "owner_expenses",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "owner_expenses",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "owner_expenses",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "pos_order_items",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "pos_order_items",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "pos_order_items",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "pos_orders",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "pos_orders",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "pos_orders",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "pos_refunds",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "pos_refunds",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "pos_refunds",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "product_availability",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "product_availability",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "product_availability",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "sync_online_product_availability_trigger",
+      "event": "DELETE",
+      "table": "product_availability",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION sync_online_product_availability()"
+    },
+    {
+      "name": "sync_online_product_availability_trigger",
+      "event": "INSERT",
+      "table": "product_availability",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION sync_online_product_availability()"
+    },
+    {
+      "name": "sync_online_product_availability_trigger",
+      "event": "UPDATE",
+      "table": "product_availability",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION sync_online_product_availability()"
+    },
+    {
+      "name": "hibi_profile_guard",
+      "event": "INSERT",
+      "table": "user_profiles",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_protect_profile()"
+    },
+    {
+      "name": "hibi_profile_guard",
+      "event": "UPDATE",
+      "table": "user_profiles",
+      "timing": "BEFORE",
+      "statement": "EXECUTE FUNCTION hibi_protect_profile()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "DELETE",
+      "table": "user_profiles",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "INSERT",
+      "table": "user_profiles",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    },
+    {
+      "name": "phase1_audit",
+      "event": "UPDATE",
+      "table": "user_profiles",
+      "timing": "AFTER",
+      "statement": "EXECUTE FUNCTION hibi_audit_row()"
+    }
+  ],
+  "functions": [
+    {
+      "name": "create_hibi_pos_order",
+      "identity_args": "p_source text, p_grab_code text, p_order_date date, p_order_time time without time zone, p_created_at timestamp with time zone, p_subtotal numeric, p_discount_type text, p_discount_amount numeric, p_total numeric, p_payment_method text, p_amount_received numeric, p_cash_amount numeric, p_gcash_amount numeric, p_change_given numeric, p_gcash_ref text, p_status text, p_cashier text, p_items jsonb",
+      "security_definer": true
+    },
+    {
+      "name": "get_fund_balance_snapshot_for_date",
+      "identity_args": "p_business_date date",
+      "security_definer": true
+    },
+    {
+      "name": "get_latest_fund_balance_snapshot",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "get_login_email",
+      "identity_args": "p_username text",
+      "security_definer": true
+    },
+    {
+      "name": "get_next_hibi_order_number",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "guard_hibi_shift_reopen",
+      "identity_args": "",
+      "security_definer": false
+    },
+    {
+      "name": "hibi_actor",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_audit_row",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_backup",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_business_day",
+      "identity_args": "",
+      "security_definer": false
+    },
+    {
+      "name": "hibi_check_day",
+      "identity_args": "p_date date",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_create_online_order",
+      "identity_args": "p_payload jsonb, p_details jsonb",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_create_order_v2",
+      "identity_args": "p_request_id uuid, p_payload jsonb",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_day_money",
+      "identity_args": "p_date date, p_start timestamp with time zone, p_end timestamp with time zone",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_financial_guard_v2",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_has_permission",
+      "identity_args": "p_permission text",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_is_active_user",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_is_superuser",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_order_status",
+      "identity_args": "p_id uuid, p_status text, p_reason text",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_protect_eod_update",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_protect_financial_update",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_protect_profile",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_protect_shift_update",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_refund",
+      "identity_args": "p_request_id uuid, p_order_id uuid, p_cash numeric, p_gcash numeric, p_grab numeric, p_kind text, p_prepared boolean, p_reason text",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_resolve_request",
+      "identity_args": "p_request_id uuid",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_set_fee",
+      "identity_args": "p_date date, p_rate numeric",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_snapshot",
+      "identity_args": "p_start date, p_end date",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_validate_shift_insert",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "hibi_void_refund",
+      "identity_args": "p_request_id uuid, p_refund_id uuid, p_reason text",
+      "security_definer": true
+    },
+    {
+      "name": "is_superuser",
+      "identity_args": "",
+      "security_definer": true
+    },
+    {
+      "name": "reopen_hibi_shift",
+      "identity_args": "p_shift_id text, p_reason text",
+      "security_definer": true
+    },
+    {
+      "name": "sync_online_product_availability",
+      "identity_args": "",
+      "security_definer": true
+    }
+  ],
+  "extensions": [
+    {
+      "name": "pg_cron",
+      "version": "1.6.4"
+    },
+    {
+      "name": "pg_net",
+      "version": "0.20.4"
+    },
+    {
+      "name": "pg_stat_statements",
+      "version": "1.11"
+    },
+    {
+      "name": "pgcrypto",
+      "version": "1.3"
+    },
+    {
+      "name": "plpgsql",
+      "version": "1.0"
+    },
+    {
+      "name": "supabase_vault",
+      "version": "0.3.1"
+    },
+    {
+      "name": "uuid-ossp",
+      "version": "1.1"
+    }
+  ],
+  "migrations": [
+    {
+      "name": "cashier_current_day_refunds",
+      "version": "20260919130909"
+    },
+    {
+      "name": "monthly_reporting_tables",
+      "version": "20261001164013"
+    },
+    {
+      "name": "monthly_reporting_schedule",
+      "version": "20261001164213"
+    },
+    {
+      "name": "add_superuser_fund_transactions",
+      "version": "20261019081604"
+    },
+    {
+      "name": "add_order_service_type",
+      "version": "20261026093431"
+    },
+    {
+      "name": "enable_live_order_updates",
+      "version": "20261029052805"
+    },
+    {
+      "name": "enable_product_availability_realtime",
+      "version": "20261029061524"
+    },
+    {
+      "name": "expand_pos_realtime_shared_tables",
+      "version": "20261029063509"
+    },
+    {
+      "name": "add_secure_online_ordering",
+      "version": "20261029072502"
+    },
+    {
+      "name": "harden_online_order_validation",
+      "version": "20261029073540"
+    },
+    {
+      "name": "make_online_order_insert_atomic",
+      "version": "20261029073618"
+    },
+    {
+      "name": "add_fund_balance_snapshots",
+      "version": "20261029155010"
+    },
+    {
+      "name": "add_reconciliation_fund_snapshot_type",
+      "version": "20261029162427"
+    },
+    {
+      "name": "allow_reconciliation_snapshots_for_staff",
+      "version": "20261029184528"
+    },
+    {
+      "name": "restrict_staff_snapshots_to_reconciled_days",
+      "version": "20261029184630"
+    },
+    {
+      "name": "persistent_product_availability_fund_snapshot_realtime_and_complete_backup",
+      "version": "20261102130721"
+    }
+  ],
+  "project_ref": "ysdnxwvkqyqojrelhcbu",
+  "generated_at": "2026-11-02T13:12:24.913077+00:00",
+  "realtime_publication": [
+    "app_data",
+    "cash_movements",
+    "cash_shifts",
+    "daily_expenses",
+    "eod_reconciliations",
+    "fund_balance_snapshots",
+    "fund_transactions",
+    "online_product_availability",
+    "owner_expenses",
+    "pos_order_items",
+    "pos_orders",
+    "product_availability"
+  ]
+}
