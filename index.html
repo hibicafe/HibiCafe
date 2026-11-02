@@ -1863,7 +1863,12 @@ function goToPage(pageId){
   if(pageId==='orders') renderOrdersPage();
   if(pageId==='expenses') renderExpensesPage();
   if(pageId==='shifts') renderShiftsPage();
-  if(pageId==='dashboard') renderDashboard();
+  if(pageId==='dashboard'){
+    renderDashboard();
+    if(isSuperuser()) loadFundSnapshots().then(()=>{
+      if(document.getElementById('page-dashboard')?.classList.contains('active')) renderDashboard();
+    }).catch(e=>console.warn('Automatic snapshot history refresh failed:',e));
+  }
   if(pageId==='reports') renderReports();
   if(pageId==='menu') renderMenuMgmt();
   if(pageId==='audit') renderAuditLog();
