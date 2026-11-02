@@ -4348,8 +4348,9 @@ function renderSettings(){
         <div class="section-title">Data</div>
         <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">${ORDERS.length} orders loaded for viewed periods. Next order number: ${formatOrderNum(SETTINGS.nextOrderNum)}.</div>
         <div style="font-size:12px;color:var(--text-dim);">${supabaseOk ? `Connected to Supabase. ${formatSyncAge(LAST_DB_SYNC_AT)}.` : 'Supabase unavailable — orders and financial writes are blocked until reconnected.'}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;"><button class="btn btn-secondary" id="download-full-data-backup" type="button">Download Full Data Backup</button></div>
-        <p class="permission-note" style="margin-top:8px;">Superuser-only export of orders, online customer details, expenses, shifts, reconciliations, fund records and audit history. Store the downloaded file securely. Authentication passwords are not included.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;"><button class="btn btn-secondary" id="download-full-data-backup" type="button">Prepare Full Data Backup</button></div>
+        <div id="full-data-backup-download-link" style="display:none;margin-top:10px;"></div>
+        <p class="permission-note" style="margin-top:8px;">Superuser-only export of orders, online customer details, expenses, shifts, reconciliations, fund records and audit history. On iPhone/iPad, tap the Save Backup File link after preparation; if it opens a preview, use Share → Save to Files. Store the downloaded file securely. Authentication passwords are not included.</p>
       </div>${accountPasswordSection}${usersSection}`;
   }
   if(isSuperuser()){
@@ -4365,16 +4366,22 @@ function renderSettings(){
         if(!backup||backup.format!=='hibi-application-backup-v2'||!backup.tables) throw new Error('The database returned an unsupported backup format.');
         const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
         const url=URL.createObjectURL(blob);
+        const previousUrl=backupButton.dataset.backupUrl;
+        if(previousUrl) URL.revokeObjectURL(previousUrl);
+        backupButton.dataset.backupUrl=url;
+        const downloadArea=document.getElementById('full-data-backup-download-link');
+        downloadArea.innerHTML='';
         const link=document.createElement('a');
         link.href=url;
         link.download='Hibi_Cafe_Full_Backup_'+businessDayKey()+'.json';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(()=>URL.revokeObjectURL(url),1500);
-        try{await writeAudit('download_full_data_backup','backup',businessDayKey(),'',{tableCount:Object.keys(backup.tables).length,format:backup.format});}
+        link.textContent='Save Backup File';
+        link.className='btn btn-primary';
+        link.style.display='inline-block';
+        downloadArea.appendChild(link);
+        downloadArea.style.display='block';
+        try{await writeAudit('prepare_full_data_backup','backup',businessDayKey(),'',{tableCount:Object.keys(backup.tables).length,format:backup.format});}
         catch(auditError){console.warn('Backup audit entry failed:',auditError);}
-        toast('Full data backup downloaded ('+Object.keys(backup.tables).length+' tables).');
+        toast('Backup is ready. Tap “Save Backup File” below to download it.');
       }catch(error){
         console.error('Full data backup failed:',error);
         toast('Could not download backup: '+(error.message||error));
