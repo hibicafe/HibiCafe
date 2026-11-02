@@ -1,6 +1,10 @@
 -- Fund snapshots are calculated inside Postgres so reconciliation never depends
 -- on potentially stale browser-side order, refund, or expense caches.
-create or replace function public.save_fund_balance_snapshot_db(
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create or replace function private.save_fund_balance_snapshot_db(
   p_business_date date,
   p_notes text default null,
   p_snapshot_type text default 'reconciliation'
@@ -171,6 +175,37 @@ begin
   select v_id,p_business_date,v_at,round(v_cash,2),round(v_gcash,2),round(v_bank,2),p_snapshot_type;
 end;
 $function$;
+
+revoke all on function private.save_fund_balance_snapshot_db(date,text,text) from public;
+revoke all on function private.save_fund_balance_snapshot_db(date,text,text) from anon;
+grant execute on function private.save_fund_balance_snapshot_db(date,text,text) to authenticated;
+
+
+-- Expose only a SECURITY INVOKER wrapper through the Data API. The internal
+-- SECURITY DEFINER routine remains in the non-exposed private schema and
+-- performs explicit authentication and Hibi permission checks.
+create or replace function public.save_fund_balance_snapshot_db(
+  p_business_date date,
+  p_notes text default null,
+  p_snapshot_type text default 'reconciliation'
+)
+returns table (
+  id uuid,
+  business_date date,
+  snapshot_at timestamptz,
+  cash_balance numeric,
+  gcash_balance numeric,
+  bank_balance numeric,
+  snapshot_type text
+)
+language sql
+security invoker
+set search_path = ''
+as $wrapper$
+  select * from private.save_fund_balance_snapshot_db(
+    p_business_date,p_notes,p_snapshot_type
+  );
+$wrapper$;
 
 revoke all on function public.save_fund_balance_snapshot_db(date,text,text) from public;
 revoke all on function public.save_fund_balance_snapshot_db(date,text,text) from anon;
