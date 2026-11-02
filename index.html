@@ -920,7 +920,6 @@ let shiftsFilterDate = businessDayKey();
 let FUND_TRANSACTIONS = [];
 let REFUNDS = [];
 let FUND_SNAPSHOTS = [];
-let FUND_SNAPSHOT_AUTO_RUNNING = false;
 
 /* ---------- Storage helpers ---------- */
 // Shared storage uses Supabase only. Writes fail closed: no browser/local fallback for shared data.
@@ -1732,7 +1731,8 @@ function scheduleLiveSharedRefresh(table){
         await loadFinancialRows();
       }
       if(tables.includes('cash_shifts')) await loadShifts();
-      if(tables.includes('fund_transactions') && isSuperuser()) await Promise.all([loadFundTransactions(),loadFundSnapshots()]);
+      if(tables.includes('fund_transactions') && isSuperuser()) await loadFundTransactions();
+      if(tables.includes('fund_balance_snapshots')) await loadFundSnapshots();
       if(tables.some(t=>t!=='app_data')){
         const activePage=document.querySelector('.page.active')?.id;
         if(activePage==='page-dashboard') renderDashboard();
@@ -1765,6 +1765,7 @@ function startLiveOrderSync(){
     .on('postgres_changes',{event:'*',schema:'public',table:'cash_movements'},()=>scheduleLiveSharedRefresh('cash_movements'))
     .on('postgres_changes',{event:'*',schema:'public',table:'eod_reconciliations'},()=>scheduleLiveSharedRefresh('eod_reconciliations'))
     .on('postgres_changes',{event:'*',schema:'public',table:'fund_transactions'},()=>scheduleLiveSharedRefresh('fund_transactions'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'fund_balance_snapshots'},()=>scheduleLiveSharedRefresh('fund_balance_snapshots'))
     .subscribe((status)=>{
       if(status==='CHANNEL_ERROR' || status==='TIMED_OUT'){
         console.warn('Hibi live POS updates connection status:',status);
@@ -2943,17 +2944,6 @@ async function saveFundSnapshot(type='manual',notes='',businessDate=businessDayK
   })});
   await loadFundSnapshots();
 }
-async function ensureDailyFundSnapshot(){
-  if(!isSuperuser()||FUND_SNAPSHOT_AUTO_RUNNING) return;
-  const today=businessDayKey();
-  if(FUND_SNAPSHOTS.some(s=>s.date===today)) return;
-  FUND_SNAPSHOT_AUTO_RUNNING=true;
-  try{
-    await saveFundSnapshot('daily','Automatic daily snapshot on first superuser dashboard visit.');
-    renderDashboard();
-  }catch(e){console.warn('Automatic fund snapshot failed:',e);toast('Daily funds snapshot could not be saved. Please use Snapshot Now and check the database connection.');}
-  finally{FUND_SNAPSHOT_AUTO_RUNNING=false;}
-}
 function fundBalances(){
   const latestSnapshot=FUND_SNAPSHOTS[0]||null;
   const activeFunds=FUND_TRANSACTIONS.filter(x=>x.status==='Active');
@@ -3651,7 +3641,8 @@ async function renderReports(){
         toast(reconciliationSnapshotError?'Cash reconciliation saved and daily report emailed, but the funds snapshot failed: '+(reconciliationSnapshotError.message||reconciliationSnapshotError):'Cash reconciliation saved and daily report emailed.');
       }catch(err){
         console.error('Daily report email failed:', err);
-        toast('Cash reconciliation saved, but email failed: ' + (err.message || err));
+        const snapshotNotice=reconciliationSnapshotError?' Funds snapshot also failed: '+(reconciliationSnapshotError.message||reconciliationSnapshotError):'';
+        toast('Cash reconciliation saved, but email failed: ' + (err.message || err)+snapshotNotice);
       }
       renderReports();
     };
@@ -4357,9 +4348,41 @@ function renderSettings(){
         <div class="section-title">Data</div>
         <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">${ORDERS.length} orders loaded for viewed periods. Next order number: ${formatOrderNum(SETTINGS.nextOrderNum)}.</div>
         <div style="font-size:12px;color:var(--text-dim);">${supabaseOk ? `Connected to Supabase. ${formatSyncAge(LAST_DB_SYNC_AT)}.` : 'Supabase unavailable — orders and financial writes are blocked until reconnected.'}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;"><button class="btn btn-secondary" id="download-full-data-backup" type="button">Download Full Data Backup</button></div>
+        <p class="permission-note" style="margin-top:8px;">Superuser-only export of orders, online customer details, expenses, shifts, reconciliations, fund records and audit history. Store the downloaded file securely. Authentication passwords are not included.</p>
       </div>${accountPasswordSection}${usersSection}`;
   }
   if(isSuperuser()){
+    const backupButton=document.getElementById('download-full-data-backup');
+    if(backupButton) backupButton.onclick=async()=>{
+      if(!confirm('This file contains customer details and business financial records. Download and store it securely?')) return;
+      const originalLabel=backupButton.textContent;
+      backupButton.disabled=true;
+      backupButton.textContent='Preparing backup…';
+      try{
+        const response=await posApi('/rest/v1/rpc/hibi_backup',{method:'POST',body:'{}'});
+        const backup=await response.json();
+        if(!backup||backup.format!=='hibi-application-backup-v2'||!backup.tables) throw new Error('The database returned an unsupported backup format.');
+        const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url;
+        link.download='Hibi_Cafe_Full_Backup_'+businessDayKey()+'.json';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);
+        try{await writeAudit('download_full_data_backup','backup',businessDayKey(),'',{tableCount:Object.keys(backup.tables).length,format:backup.format});}
+        catch(auditError){console.warn('Backup audit entry failed:',auditError);}
+        toast('Full data backup downloaded ('+Object.keys(backup.tables).length+' tables).');
+      }catch(error){
+        console.error('Full data backup failed:',error);
+        toast('Could not download backup: '+(error.message||error));
+      }finally{
+        backupButton.disabled=false;
+        backupButton.textContent=originalLabel;
+      }
+    };
     const orderUrl=new URL('order.html',location.href).href;
     const linkInput=document.getElementById('customer-order-link'), qrImage=document.getElementById('customer-order-qr');
     if(linkInput)linkInput.value=orderUrl;
