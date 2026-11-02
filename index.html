@@ -2935,6 +2935,8 @@ async function loadFundSnapshots(){
 }
 async function saveFundSnapshot(type='manual',notes='',businessDate=businessDayKey()){
   if(!isSuperuser() && type!=='reconciliation') throw new Error('Only a superuser can save manual or daily fund snapshots.');
+  // Refresh the database anchor immediately before calculating a new snapshot.
+  await loadFundSnapshots();
   const capturedAt=new Date().toISOString();
   const balances=fundBalances();
   await posApi('/rest/v1/fund_balance_snapshots',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({
@@ -2945,7 +2947,7 @@ async function saveFundSnapshot(type='manual',notes='',businessDate=businessDayK
   await loadFundSnapshots();
 }
 function fundBalances(){
-  const latestSnapshot=FUND_SNAPSHOTS[0]||null;
+  const latestSnapshot=FUND_SNAPSHOTS.find(x=>x.type!=='voided')||null;
   const activeFunds=FUND_TRANSACTIONS.filter(x=>x.status==='Active');
   const result={Cash:0,GCash:0,Bank:0};
   const amount=x=>Number(x)||0;
@@ -3074,7 +3076,7 @@ function renderAvailableFunds(){
       <details style="border-top:1px solid var(--line);padding-top:10px;">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;">Snapshot history <span style="font-weight:500;color:var(--text-dim);">(${FUND_SNAPSHOTS.length})</span></summary>
         <div style="overflow-x:auto;margin-top:10px;"><table style="min-width:620px;"><thead><tr><th>Date / Time</th><th>Type</th><th class="num">Cash</th><th class="num">GCash</th><th class="num">Bank</th></tr></thead><tbody>
-        ${FUND_SNAPSHOTS.length?FUND_SNAPSHOTS.slice(0,20).map(x=>`<tr><td>${esc(new Date(x.snapshotAt).toLocaleString('en-PH',{timeZone:'Asia/Manila'}))}</td><td>${esc(x.type)}</td><td class="num">${esc(PESO(x.cash))}</td><td class="num">${esc(PESO(x.gcash))}</td><td class="num">${esc(PESO(x.bank))}</td></tr>`).join(''):'<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:18px;">No snapshots recorded yet.</td></tr>'}
+        ${FUND_SNAPSHOTS.length?FUND_SNAPSHOTS.slice(0,20).map(x=>`<tr><td>${esc(new Date(x.snapshotAt).toLocaleString('en-PH',{timeZone:'Asia/Manila'}))}</td><td>${esc(x.type==='voided'?'VOIDED · '+(x.notes||'Invalid snapshot'):x.type)}</td><td class="num">${esc(PESO(x.cash))}</td><td class="num">${esc(PESO(x.gcash))}</td><td class="num">${esc(PESO(x.bank))}</td></tr>`).join(''):'<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:18px;">No snapshots recorded yet.</td></tr>'}
         </tbody></table></div>
       </details>
       <details style="border-top:1px solid var(--line);padding-top:10px;">
