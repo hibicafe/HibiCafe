@@ -101,17 +101,17 @@ begin
   -- paid orders are applied here.
   select
     coalesce(sum(case
-      when r.cash_amount is not null then r.cash_amount
+      when coalesce(r.cash_amount,0)+coalesce(r.gcash_amount,0)+coalesce(r.grab_amount,0) > 0 then coalesce(r.cash_amount,0)
       when o.payment_method = 'Cash' then r.amount
       when o.payment_method = 'Cash + GCash' then least(coalesce(r.amount,0),coalesce(o.cash_amount,0))
       else 0 end),0),
     coalesce(sum(case
-      when r.gcash_amount is not null then r.gcash_amount
+      when coalesce(r.cash_amount,0)+coalesce(r.gcash_amount,0)+coalesce(r.grab_amount,0) > 0 then coalesce(r.gcash_amount,0)
       when o.payment_method = 'GCash' then r.amount
       when o.payment_method = 'Cash + GCash' then least(coalesce(r.amount,0),coalesce(o.gcash_amount,0))
       else 0 end),0),
     coalesce(sum(case
-      when r.grab_amount is not null then r.grab_amount
+      when coalesce(r.cash_amount,0)+coalesce(r.gcash_amount,0)+coalesce(r.grab_amount,0) > 0 then coalesce(r.grab_amount,0)
       when o.source = 'GrabFood' then r.amount
       else 0 end),0)
   into v_cash_refunds,v_gcash_refunds,v_grab_refunds
