@@ -49,13 +49,16 @@ create index if not exists inventory_movements_item_created_idx
 create or replace function public.hibi_inventory_apply_movement()
 returns trigger
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = pg_catalog, public
 as $$
 declare
   item_active boolean;
   next_qty numeric(14,3);
 begin
+  if auth.uid() is null or not public.hibi_is_active_user() then
+    raise exception 'Active authenticated user required';
+  end if;
   select active into item_active from public.inventory_items where id = new.item_id for update;
   if not found or not item_active then
     raise exception 'Inventory item is missing or archived';
@@ -113,14 +116,20 @@ drop policy if exists inventory_categories_read on public.inventory_categories;
 create policy inventory_categories_read on public.inventory_categories for select to authenticated
 using (public.hibi_is_active_user());
 drop policy if exists inventory_categories_manage on public.inventory_categories;
-create policy inventory_categories_manage on public.inventory_categories for all to authenticated
+create policy inventory_categories_insert on public.inventory_categories for insert to authenticated
+with check (public.hibi_is_superuser());
+drop policy if exists inventory_categories_update on public.inventory_categories;
+create policy inventory_categories_update on public.inventory_categories for update to authenticated
 using (public.hibi_is_superuser()) with check (public.hibi_is_superuser());
 
 drop policy if exists inventory_items_read on public.inventory_items;
 create policy inventory_items_read on public.inventory_items for select to authenticated
 using (public.hibi_is_active_user());
 drop policy if exists inventory_items_manage on public.inventory_items;
-create policy inventory_items_manage on public.inventory_items for all to authenticated
+create policy inventory_items_insert on public.inventory_items for insert to authenticated
+with check (public.hibi_is_superuser());
+drop policy if exists inventory_items_update on public.inventory_items;
+create policy inventory_items_update on public.inventory_items for update to authenticated
 using (public.hibi_is_superuser()) with check (public.hibi_is_superuser());
 
 drop policy if exists inventory_balances_read on public.inventory_balances;
