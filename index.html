@@ -120,6 +120,8 @@ nav.tabs button.active{background:var(--caramel);color:#fff;}
 .size-option{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;border:1.5px solid var(--line);border-radius:11px;margin-bottom:8px;font-weight:600;transition:.12s;}
 .size-option:hover{border-color:var(--caramel);}
 .size-option.selected{border-color:var(--caramel);background:#FBF1E4;}
+.size-option.unavailable{opacity:.52;border-style:dashed;cursor:not-allowed;}
+.size-option.unavailable:hover{border-color:var(--line);}
 .size-option .sprice{font-family:'JetBrains Mono',monospace;color:var(--caramel-dark);}
 .addon-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--cream-dim);}
 .addon-row label{flex:1;font-size:14px;font-weight:500;cursor:pointer;}
@@ -2089,7 +2091,7 @@ function openProductModal(pr){
           <div id="size-list">
             ${sizeKeys.map(k=>`
               <div class="size-option ${k===chosenSize?'selected':''} ${inventoryVariantAvailable(pr.id,k)?'':'unavailable'}" data-size="${escAttr(k)}" aria-disabled="${!inventoryVariantAvailable(pr.id,k)}">
-                <span>${esc(k)}</span><span class="sprice">${PESO(priceMap[k] ?? pr.sizes[k])}</span>
+                <span>${esc(k)}</span><span class="sprice">${inventoryVariantAvailable(pr.id,k)?PESO(priceMap[k] ?? pr.sizes[k]):'Sold Out'}</span>
               </div>`).join('')}
           </div>` : ''}
         ${freeUpsizeEligible ? `
