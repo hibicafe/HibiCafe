@@ -898,6 +898,36 @@ function optimizeLogoImage(file){
 /* ---------- State ---------- */
 let MENU = defaultMenu();
 let ADDONS = defaultAddons();
+let INVENTORY_VARIANT_AVAILABILITY={};
+let INVENTORY_VARIANT_REFRESHING=false;
+let INVENTORY_VARIANT_CHANNEL=null;
+async function refreshInventoryVariantAvailability(){
+ if(INVENTORY_VARIANT_REFRESHING||!supabaseClient)return;
+ INVENTORY_VARIANT_REFRESHING=true;
+ try{
+  const [rr,br]=await Promise.all([supabaseClient.from('inventory_recipe_lines').select('recipe_type,product_id,product_size,item_id,quantity_per_unit,optional'),supabaseClient.from('inventory_balances').select('item_id,quantity_on_hand')]);
+  if(rr.error)throw rr.error;if(br.error)throw br.error;
+  const balances=new Map((br.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0])),recipes=rr.data||[],next={};
+  for(const p of (MENU?.products||[])){for(const size of Object.keys(p.sizes||{})){
+   const lines=recipes.filter(x=>x.recipe_type==='product'&&x.product_id===String(p.id)&&x.product_size===size);
+   if(!lines.length){next[p.id+'|'+size]=true;continue}
+   const required=new Map();for(const line of lines){const prev=required.get(line.item_id)||{qty:0,optional:true};prev.qty+=Number(line.quantity_per_unit)||0;prev.optional=prev.optional&&!!line.optional;required.set(line.item_id,prev)}
+   next[p.id+'|'+size]=[...required].every(([id,x])=>x.optional||(balances.get(id)||0)>=x.qty);
+  }}
+  INVENTORY_VARIANT_AVAILABILITY=next;
+  if(document.getElementById('page-pos')?.classList.contains('active'))renderPOS();
+ }catch(e){console.warn('Could not refresh ingredient availability:',e)}
+ finally{INVENTORY_VARIANT_REFRESHING=false}
+}
+function inventoryVariantAvailable(productId,size){return INVENTORY_VARIANT_AVAILABILITY[String(productId)+'|'+String(size)]!==false}
+function subscribeInventoryAvailability(){
+ if(INVENTORY_VARIANT_CHANNEL||!supabaseClient)return;
+ INVENTORY_VARIANT_CHANNEL=supabaseClient.channel('hibi-inventory-availability')
+ .on('postgres_changes',{event:'*',schema:'public',table:'inventory_balances'},()=>refreshInventoryVariantAvailability())
+ .on('postgres_changes',{event:'*',schema:'public',table:'inventory_recipe_lines'},()=>refreshInventoryVariantAvailability())
+ .on('postgres_changes',{event:'*',schema:'public',table:'inventory_items'},()=>refreshInventoryVariantAvailability()).subscribe();
+}
+
 let ORDERS = [];
 let EOD = {};
 let SETTINGS = defaultSettings();
@@ -966,7 +996,7 @@ function requireActionReason(label='this change'){
   if(!reason || !reason.trim()){ toast('A reason / note is required.'); return null; }
   return reason.trim();
 }
-function showApp(){ document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display=''; document.getElementById('cashier-pill').textContent='User: '+(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff'); applyPermissions(); updateDatabaseStatusUI(); }
+function showApp(){ document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display=''; document.getElementById('cashier-pill').textContent='User: '+(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff'); applyPermissions(); updateDatabaseStatusUI(); subscribeInventoryAvailability(); refreshInventoryVariantAvailability(); }
 function showLoginError(msg){ const e=document.getElementById('login-error'); e.textContent=msg||''; }
 async function doLogin(){
   showLoginError(''); const username=document.getElementById('login-username').value.trim().toLowerCase(); const password=document.getElementById('login-password').value;
@@ -1942,7 +1972,7 @@ function renderPOS(){
       const sizeKeys = Object.keys(pr.sizes);
       const priceMap=orderChannel==='GrabFood'?(pr.grabPrices||pr.sizes):pr.sizes;
       const priceLabel = sizeKeys.length===1 ? PESO(priceMap[sizeKeys[0]]??pr.sizes[sizeKeys[0]]) : PESO(Math.min(...sizeKeys.map(k=>priceMap[k]??pr.sizes[k]))) + ' +';
-      const soldOut=isProductSoldOut(pr,selectedOrderDate);
+      const recipeSizes=Object.keys(pr.sizes||{}).filter(k=>pr.sizes[k]!==null);const soldOut=isProductSoldOut(pr,selectedOrderDate)||(recipeSizes.length>0&&recipeSizes.every(k=>!inventoryVariantAvailable(pr.id,k)));
       return `<button class="product-card ${pr.active?'':'unavailable'} ${soldOut?'sold-out':''}" data-pid="${pr.id}" data-cat="${escAttr(pr.category)}" ${soldOut?'disabled':''}>
         ${soldOut?'<span class="soldout-ribbon">SOLD OUT</span>':''}
         <div class="product-visual ${pr.image?'has-image':''}">${pr.image?`<img src="${pr.image}" alt="${escAttr(pr.name)}" loading="lazy">`:`<span>${productIcon(pr)}</span>`}</div>
@@ -1982,7 +2012,9 @@ function formatOrderNum(n){ return 'HIBI-' + String(n).padStart(4,'0'); }
 /* ---- Product modal (size + addons + qty) ---- */
 function openProductModal(pr){
   const sizeKeys = Object.keys(pr.sizes).filter(k=>pr.sizes[k]!==null);
-  let chosenSize = sizeKeys.length ? sizeKeys[0] : null;
+  const availableSizeKeys=sizeKeys.filter(k=>inventoryVariantAvailable(pr.id,k));
+  if(sizeKeys.length&&!availableSizeKeys.length){toast(pr.name+' is unavailable because required ingredients are out of stock.');return;}
+  let chosenSize = availableSizeKeys.length ? availableSizeKeys[0] : (sizeKeys[0]||null);
   let chosenAddons = new Set();
   let qty = 1;
   let freeUpsize = false;
@@ -2047,6 +2079,7 @@ function openProductModal(pr){
     document.getElementById('modal-cancel').onclick = closeModal;
     document.querySelectorAll('#size-list .size-option').forEach(el=>{
       el.onclick = ()=>{
+        if(!inventoryVariantAvailable(pr.id,el.dataset.size)){toast('This size is unavailable because required ingredients are out of stock.');return;}
         chosenSize = el.dataset.size;
         if(chosenSize!==key20) freeUpsize=false;
         render();
@@ -2066,6 +2099,7 @@ function openProductModal(pr){
     });
     document.getElementById('modal-add').onclick = ()=>{
       const addonObjs = ADDONS.filter(a=>chosenAddons.has(a.id));
+      if(!inventoryVariantAvailable(pr.id,chosenSize)){toast('This size is unavailable because required ingredients are out of stock.');return;}
       addToCart(pr, chosenSize, addonObjs, qty, freeUpsize);
       closeModal();
     };
