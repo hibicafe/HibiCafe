@@ -77,6 +77,24 @@ create table if not exists public.inventory_order_deductions (
 create index if not exists inventory_order_deductions_order_idx
   on public.inventory_order_deductions(order_id);
 
+-- The enablement timestamp prevents historical orders from being deducted if reopened.
+create table if not exists public.inventory_deduction_config (
+  singleton boolean primary key default true check (singleton),
+  enabled_at timestamptz not null default now()
+);
+insert into public.inventory_deduction_config(singleton) values(true) on conflict(singleton) do nothing;
+create table if not exists public.inventory_order_deduction_runs (
+  order_id uuid primary key references public.pos_orders(id),
+  processed_at timestamptz not null default now()
+);
+alter table public.inventory_deduction_config enable row level security;
+alter table public.inventory_order_deduction_runs enable row level security;
+grant select on public.inventory_order_deduction_config,public.inventory_order_deduction_runs to authenticated;
+drop policy if exists inventory_deduction_config_read on public.inventory_deduction_config;
+create policy inventory_deduction_config_read on public.inventory_deduction_config for select to authenticated using (public.hibi_is_active_user());
+drop policy if exists inventory_deduction_runs_read on public.inventory_order_deduction_runs;
+create policy inventory_deduction_runs_read on public.inventory_order_deduction_runs for select to authenticated using (public.hibi_is_active_user());
+
 alter table public.inventory_recipe_lines enable row level security;
 alter table public.inventory_stock_counts enable row level security;
 alter table public.inventory_order_deductions enable row level security;
@@ -142,13 +160,16 @@ declare
   v_movement_id uuid;
   v_unit_cost numeric(14,6);
   v_total numeric(14,4);
+  v_enabled_at timestamptz;
 begin
   select * into v_order from public.pos_orders where id=p_order_id for update;
   if not found or v_order.status<>'Preparing' then return; end if;
-  if exists(select 1 from public.inventory_order_deductions where order_id=p_order_id) then return; end if;
+  select enabled_at into v_enabled_at from public.inventory_deduction_config where singleton=true;
+  if v_enabled_at is null or v_order.created_at<v_enabled_at then return; end if;
+  if exists(select 1 from public.inventory_order_deduction_runs where order_id=p_order_id) then return; end if;
+  insert into public.inventory_order_deduction_runs(order_id) values(p_order_id);
 
   perform set_config('hibi.inventory_deduction','on',true);
-
   for v_need in
     select order_item_id,item_id,sum(required_qty) as required_qty,bool_and(optional) as optional
     from (
@@ -167,8 +188,7 @@ begin
     group by order_item_id,item_id
     order by item_id,order_item_id
   loop
-    select coalesce(quantity_on_hand,0) into v_available
-      from public.inventory_balances where item_id=v_need.item_id for update;
+    select coalesce(quantity_on_hand,0) into v_available from public.inventory_balances where item_id=v_need.item_id for update;
     v_available:=coalesce(v_available,0);
     if v_available<v_need.required_qty and v_need.optional then continue; end if;
     if v_available<v_need.required_qty then
@@ -187,7 +207,6 @@ begin
   end loop;
 end;
 $$;
-
 create or replace function public.hibi_inventory_deduct_on_order_item()
 returns trigger language plpgsql security definer
 set search_path=pg_catalog,public
@@ -220,13 +239,17 @@ after update of status on public.pos_orders
 for each row execute function public.hibi_inventory_deduct_on_status_change();
 
 -- Shared availability check for POS and online ordering. Unconfigured variants remain unaffected.
+drop function if exists public.hibi_inventory_variant_availability(text,text,text[]);
 create or replace function public.hibi_inventory_variant_availability(
-  p_product_id text,p_size text,p_addon_ids text[] default '{}'::text[]
+  p_product_id text,p_size text,p_addon_ids text[] default '{}'::text[],p_qty integer default 1
 )
 returns table(is_available boolean, unavailable_ingredients text[])
-language sql stable security definer
+language plpgsql stable security definer
 set search_path=pg_catalog,public
 as $$
+begin
+  if p_qty is null or p_qty not between 1 and 10000 then raise exception 'Invalid item quantity'; end if;
+  return query
   with required as (
     select rl.item_id,rl.optional
     from public.inventory_recipe_lines rl
@@ -240,7 +263,7 @@ as $$
     from required r join public.inventory_items i on i.id=r.item_id
     left join public.inventory_balances b on b.item_id=i.id
     where not r.optional and coalesce(b.quantity_on_hand,0) < (
-      select sum(rl.quantity_per_unit)
+      select sum(rl.quantity_per_unit)*p_qty
       from public.inventory_recipe_lines rl
       where rl.item_id=r.item_id and (
         (rl.recipe_type='product' and rl.product_id=p_product_id and rl.product_size=coalesce(p_size,'Regular'))
@@ -250,8 +273,9 @@ as $$
   )
   select not exists(select 1 from shortages),
          coalesce((select array_agg(name order by name) from shortages),'{}'::text[]);
+end;
 $$;
-grant execute on function public.hibi_inventory_variant_availability(text,text,text[]) to authenticated,service_role;
+grant execute on function public.hibi_inventory_variant_availability(text,text,text[],integer) to authenticated,service_role;
 grant execute on function public.hibi_apply_order_inventory(uuid) to service_role;
 
 -- Allow live clients to refresh ingredient-derived availability and balances.
