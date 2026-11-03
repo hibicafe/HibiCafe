@@ -232,9 +232,42 @@ async function p1Submit(payload){
  let pending=JSON.parse(sessionStorage.getItem(p1PendingKey())||'null');
  if(pending){throw Error('An earlier order needs checking. Use Check pending order before taking another payment.');}
  pending={id:crypto.randomUUID(),payload};sessionStorage.setItem(p1PendingKey(),JSON.stringify(pending));
- const res=await posApi('/rest/v1/rpc/hibi_create_order_v2',{method:'POST',body:JSON.stringify({p_request_id:pending.id,p_payload:pending.payload})});
- const order=await res.json();if(!order?.id)throw Error('Order confirmation is missing. Check the pending order.');
- sessionStorage.removeItem(p1PendingKey());return order;
+ let res;
+ try{
+  const token=requireDatabaseSession();
+  res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/hibi_create_order_v2`,{
+   method:'POST',
+   headers:{apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+   body:JSON.stringify({p_request_id:pending.id,p_payload:pending.payload})
+  });
+ }catch(e){
+  markDatabaseOffline();
+  throw Error('Order confirmation is uncertain. Use Check pending order before retrying. '+(e?.message||''));
+ }
+ const raw=await res.text();
+ let data=null;try{data=raw?JSON.parse(raw):null;}catch{}
+ if(!res.ok){
+  markDatabaseHealthy();
+  let message=data?.message||data?.details||data?.hint||data?.error||`Order was rejected (${res.status}).`;
+  if(res.status>=400&&res.status<500&&res.status!==408&&res.status!==429){
+   // Resolve the same request ID after a definite server rejection. This clears
+   // the browser's pending lock without risking a duplicate order.
+   const resolution=await p1Resolve(pending.id);
+   if(resolution?.state==='saved'&&resolution.result?.id){
+    sessionStorage.removeItem(p1PendingKey());
+    return resolution.result;
+   }
+   if(resolution?.state==='not_saved')sessionStorage.removeItem(p1PendingKey());
+  }
+  if(/insufficient inventory|inventory_balances_quantity_on_hand_check/i.test(message)){
+   message='Not enough stock to complete this order. Reduce the quantity or restock the required ingredient, then try again.';
+  }
+  throw Error(message);
+ }
+ markDatabaseHealthy();
+ if(!data?.id)throw Error('Order confirmation is missing. Use Check pending order before retrying.');
+ sessionStorage.removeItem(p1PendingKey());
+ return data;
 }
 async function p1RecoverOrder(){
  const pending=JSON.parse(sessionStorage.getItem(p1PendingKey())||'null');if(!pending)return;
