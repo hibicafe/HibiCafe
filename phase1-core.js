@@ -250,8 +250,6 @@ async function p1Submit(payload){
   markDatabaseHealthy();
   let message=data?.message||data?.details||data?.hint||data?.error||`Order was rejected (${res.status}).`;
   if(res.status>=400&&res.status<500&&res.status!==408&&res.status!==429){
-   // Resolve the same request ID after a definite server rejection. This clears
-   // the browser's pending lock without risking a duplicate order.
    const resolution=await p1Resolve(pending.id);
    if(resolution?.state==='saved'&&resolution.result?.id){
     sessionStorage.removeItem(p1PendingKey());
@@ -272,8 +270,26 @@ async function p1Submit(payload){
 async function p1RecoverOrder(){
  const pending=JSON.parse(sessionStorage.getItem(p1PendingKey())||'null');if(!pending)return;
  const button=document.getElementById('p1-pending-retry');if(button)button.disabled=true;
- try{const res=await posApi('/rest/v1/rpc/hibi_create_order_v2',{method:'POST',body:JSON.stringify({p_request_id:pending.id,p_payload:pending.payload})});const row=await res.json();if(!row?.id)throw Error('No order confirmation');sessionStorage.removeItem(p1PendingKey());CART=[];renderCart();await p1Load(row.order_date,row.order_date,true);goToPage('dashboard');toast('Order confirmed: '+row.order_code);}
- catch(e){toast(e.message);}finally{if(button)button.disabled=false;}
+ try{
+  // Resolve the original idempotency key first. A confirmed save is shown;
+  // a definitive not_saved result safely clears the stale checkout lock.
+  const resolution=await p1Resolve(pending.id);
+  if(resolution?.state==='saved'&&resolution.result?.id){
+   const row=resolution.result;
+   sessionStorage.removeItem(p1PendingKey());
+   CART=[];renderCart();await p1Load(row.order_date,row.order_date,true);
+   goToPage('dashboard');toast('Order confirmed: '+row.order_code);
+   return;
+  }
+  if(resolution?.state==='not_saved'){
+   sessionStorage.removeItem(p1PendingKey());
+   if(typeof renderPOS==='function')renderPOS();
+   toast('The previous order was not saved. You can try checkout again.');
+   return;
+  }
+  throw Error('Could not verify the previous order. Keep this screen open and try checking again.');
+ }catch(e){toast(e.message||'Could not verify the previous order.');}
+ finally{if(button)button.disabled=false;}
 }
 const p1RenderPOS=renderPOS;
 renderPOS=function(){p1RenderPOS();document.getElementById('p1-pending-banner')?.remove();if(!CURRENT_USER)return;const pending=sessionStorage.getItem(p1PendingKey());if(!pending)return;const node=document.createElement('div');node.id='p1-pending-banner';node.className='card';node.style.cssText='padding:14px;margin:12px;border:2px solid #B8763E';node.innerHTML='<strong>An order needs confirmation</strong><p>Check this order before taking another payment. Retrying uses the same submission reference.</p><button class="btn btn-primary" id="p1-pending-retry">Check pending order</button>';document.getElementById('page-pos').prepend(node);document.getElementById('p1-pending-retry').onclick=p1RecoverOrder;};
