@@ -279,11 +279,10 @@ $$;
 grant execute on function public.hibi_inventory_variant_availability(text,text,text[],integer) to authenticated,service_role;
 grant execute on function public.hibi_apply_order_inventory(uuid) to service_role;
 
--- Allow live clients to refresh ingredient-derived availability and balances.
-do $ begin alter publication supabase_realtime add table public.inventory_balances; exception when duplicate_object then null; when undefined_object then null; end $;
-do $ begin alter publication supabase_realtime add table public.inventory_items; exception when duplicate_object then null; when undefined_object then null; end $;
-do $ begin alter publication supabase_realtime add table public.inventory_recipe_lines; exception when duplicate_object then null; when undefined_object then null; end $;
-
+-- Enable realtime refresh for stock, item prices, and recipe changes.
+alter publication supabase_realtime add table public.inventory_balances;
+alter publication supabase_realtime add table public.inventory_items;
+alter publication supabase_realtime add table public.inventory_recipe_lines;
 
 -- Atomic physical count + variance movement, so a failed adjustment cannot leave a count half-saved.
 create or replace function public.hibi_record_inventory_stock_count(
