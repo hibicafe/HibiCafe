@@ -257,3 +257,41 @@ grant execute on function public.hibi_apply_order_inventory(uuid) to service_rol
 do $$ begin
   alter publication supabase_realtime add table public.inventory_balances;
 exception when duplicate_object then null; when undefined_object then null; end $$;
+
+
+-- Atomic physical count + variance movement, so a failed adjustment cannot leave a count half-saved.
+create or replace function public.hibi_record_inventory_stock_count(
+  p_item_id uuid,p_actual_purchase_quantity numeric,p_reason text,p_reference text default null
+)
+returns jsonb language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+declare
+  v_item public.inventory_items%rowtype;
+  v_system numeric(14,3);
+  v_actual numeric(14,3);
+  v_variance numeric(14,3);
+  v_count_id uuid;
+  v_actor text;
+begin
+  if auth.uid() is null or not public.hibi_is_active_user() then raise exception 'Active authenticated user required'; end if;
+  if p_actual_purchase_quantity is null or p_actual_purchase_quantity<0 then raise exception 'Enter a valid physical quantity'; end if;
+  if length(btrim(coalesce(p_reason,'')))<2 then raise exception 'A reason is required for every physical stock count'; end if;
+  select * into v_item from public.inventory_items where id=p_item_id and active for update;
+  if not found then raise exception 'Inventory item not found'; end if;
+  select coalesce(quantity_on_hand,0) into v_system from public.inventory_balances where item_id=p_item_id for update;
+  v_system:=coalesce(v_system,0);
+  v_actual:=round(p_actual_purchase_quantity*v_item.purchase_conversion_to_base,3);
+  v_variance:=round(v_actual-v_system,3);
+  select coalesce(display_name,username,'Staff') into v_actor from public.user_profiles where auth_user_id=auth.uid();
+  insert into public.inventory_stock_counts(item_id,system_quantity,actual_quantity,variance,purchase_unit,reason,counted_by,counted_by_name)
+  values(p_item_id,v_system,v_actual,v_variance,v_item.purchase_unit,btrim(p_reason),auth.uid(),coalesce(v_actor,'Staff'))
+  returning id into v_count_id;
+  if v_variance<>0 then
+    insert into public.inventory_movements(item_id,movement_type,quantity_delta,entered_quantity,entered_unit,reason,reference,created_by,created_by_name)
+    values(p_item_id,'adjustment',v_variance,p_actual_purchase_quantity,v_item.purchase_unit,btrim(p_reason),coalesce(nullif(btrim(p_reference),''),'Physical stock count'),auth.uid(),coalesce(v_actor,'Staff'));
+  end if;
+  return jsonb_build_object('id',v_count_id,'system_quantity',v_system,'actual_quantity',v_actual,'variance',v_variance,'purchase_unit',v_item.purchase_unit);
+end;
+$$;
+grant execute on function public.hibi_record_inventory_stock_count(uuid,numeric,text,text) to authenticated;
