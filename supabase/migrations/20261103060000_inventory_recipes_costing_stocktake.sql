@@ -1,0 +1,357 @@
+-- Hibi Cafe inventory recipes, costing, stock counts and automatic usage.
+-- No historical orders are backfilled. Deductions begin only for orders entering Preparing after this migration.
+
+alter table public.inventory_items
+  add column if not exists purchase_price numeric(14,4),
+  add column if not exists purchase_price_updated_at timestamptz;
+
+-- minimum_stock is now expressed in purchase units. Preserve the same threshold
+-- by converting existing consumption-unit thresholds to their purchase-unit equivalent.
+update public.inventory_items
+set minimum_stock = round(minimum_stock / nullif(purchase_conversion_to_base,0), 3)
+where purchase_conversion_to_base is not null and purchase_conversion_to_base > 0;
+
+alter table public.inventory_movements
+  add column if not exists purchase_unit_price numeric(14,4),
+  add column if not exists purchase_total_cost numeric(14,2),
+  add column if not exists cost_per_consumption_unit numeric(14,6);
+
+alter table public.inventory_movements
+  drop constraint if exists inventory_movements_movement_type_check,
+  add constraint inventory_movements_movement_type_check
+    check (movement_type in ('opening','stock_in','adjustment','waste','sale'));
+
+alter table public.inventory_movements alter column created_by drop not null;
+
+create table if not exists public.inventory_recipe_lines (
+  id uuid primary key default gen_random_uuid(),
+  recipe_type text not null check (recipe_type in ('product','addon')),
+  product_id text,
+  product_size text,
+  addon_id text,
+  item_id uuid not null references public.inventory_items(id),
+  quantity_per_unit numeric(14,4) not null check (quantity_per_unit > 0),
+  optional boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  created_by uuid references auth.users(id),
+  constraint inventory_recipe_scope_check check (
+    (recipe_type='product' and product_id is not null and product_size is not null and addon_id is null)
+    or (recipe_type='addon' and addon_id is not null and product_id is null and product_size is null)
+  )
+);
+create unique index if not exists inventory_recipe_product_line_uidx
+  on public.inventory_recipe_lines(product_id,product_size,item_id) where recipe_type='product';
+create unique index if not exists inventory_recipe_addon_line_uidx
+  on public.inventory_recipe_lines(addon_id,item_id) where recipe_type='addon';
+create index if not exists inventory_recipe_lookup_idx
+  on public.inventory_recipe_lines(recipe_type,product_id,product_size,addon_id);
+
+create table if not exists public.inventory_stock_counts (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references public.inventory_items(id),
+  system_quantity numeric(14,3) not null,
+  actual_quantity numeric(14,3) not null check (actual_quantity >= 0),
+  variance numeric(14,3) not null,
+  purchase_unit text not null,
+  reason text not null check (length(btrim(reason)) >= 2),
+  counted_by uuid references auth.users(id),
+  counted_by_name text not null,
+  counted_at timestamptz not null default now()
+);
+create index if not exists inventory_stock_counts_item_date_idx
+  on public.inventory_stock_counts(item_id,counted_at desc);
+alter table public.inventory_stock_counts add column if not exists actual_purchase_quantity numeric(14,3), add column if not exists purchase_conversion_to_base numeric(14,3);
+
+create table if not exists public.inventory_order_deductions (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.pos_orders(id),
+  order_item_id uuid not null references public.pos_order_items(id),
+  item_id uuid not null references public.inventory_items(id),
+  movement_id uuid not null references public.inventory_movements(id),
+  quantity numeric(14,3) not null check (quantity > 0),
+  unit_cost numeric(14,6),
+  total_cost numeric(14,4),
+  created_at timestamptz not null default now(),
+  unique(order_item_id,item_id)
+);
+create index if not exists inventory_order_deductions_order_idx
+  on public.inventory_order_deductions(order_id);
+
+-- The enablement timestamp prevents historical orders from being deducted if reopened.
+create table if not exists public.inventory_deduction_config (
+  singleton boolean primary key default true check (singleton),
+  enabled_at timestamptz not null default now()
+);
+insert into public.inventory_deduction_config(singleton) values(true) on conflict(singleton) do nothing;
+create table if not exists public.inventory_order_deduction_runs (
+  order_id uuid primary key references public.pos_orders(id),
+  processed_at timestamptz not null default now()
+);
+alter table public.inventory_deduction_config enable row level security;
+alter table public.inventory_order_deduction_runs enable row level security;
+grant select on public.inventory_order_deduction_config,public.inventory_order_deduction_runs to authenticated;
+drop policy if exists inventory_deduction_config_read on public.inventory_deduction_config;
+create policy inventory_deduction_config_read on public.inventory_deduction_config for select to authenticated using (public.hibi_is_active_user());
+drop policy if exists inventory_deduction_runs_read on public.inventory_order_deduction_runs;
+create policy inventory_deduction_runs_read on public.inventory_order_deduction_runs for select to authenticated using (public.hibi_is_active_user());
+
+alter table public.inventory_recipe_lines enable row level security;
+alter table public.inventory_stock_counts enable row level security;
+alter table public.inventory_order_deductions enable row level security;
+grant select on public.inventory_recipe_lines,public.inventory_stock_counts,public.inventory_order_deductions to authenticated;
+grant insert,update,delete on public.inventory_recipe_lines to authenticated;
+grant insert on public.inventory_stock_counts to authenticated;
+grant select on public.inventory_order_deductions to authenticated;
+
+drop policy if exists inventory_recipe_read on public.inventory_recipe_lines;
+create policy inventory_recipe_read on public.inventory_recipe_lines for select to authenticated using (public.hibi_is_active_user());
+drop policy if exists inventory_recipe_manage on public.inventory_recipe_lines;
+create policy inventory_recipe_manage on public.inventory_recipe_lines for all to authenticated
+using (public.hibi_is_superuser()) with check (public.hibi_is_superuser());
+drop policy if exists inventory_stock_count_read on public.inventory_stock_counts;
+create policy inventory_stock_count_read on public.inventory_stock_counts for select to authenticated using (public.hibi_is_active_user());
+drop policy if exists inventory_stock_count_insert on public.inventory_stock_counts;
+create policy inventory_stock_count_insert on public.inventory_stock_counts for insert to authenticated
+with check (public.hibi_is_active_user() and (counted_by is null or counted_by=auth.uid()));
+drop policy if exists inventory_order_deductions_read on public.inventory_order_deductions;
+create policy inventory_order_deductions_read on public.inventory_order_deductions for select to authenticated using (public.hibi_is_active_user());
+
+-- Replace movement trigger to permit trusted order deductions while keeping staff validation.
+create or replace function public.hibi_inventory_apply_movement()
+returns trigger language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+declare
+  item_active boolean;
+  next_qty numeric(14,3);
+  is_system_deduction boolean := current_setting('hibi.inventory_deduction',true)='on';
+begin
+  if not is_system_deduction and (auth.uid() is null or not public.hibi_is_active_user()) then
+    raise exception 'Active authenticated user required';
+  end if;
+  select active into item_active from public.inventory_items where id=new.item_id for update;
+  if not found or not item_active then raise exception 'Inventory item is missing or archived'; end if;
+  if new.movement_type in ('adjustment','waste') and length(btrim(coalesce(new.reason,'')))=0 then raise exception 'A reason is required for adjustments and waste'; end if;
+  if new.movement_type in ('opening','stock_in') and new.quantity_delta<=0 then raise exception 'Opening stock and deliveries must increase stock'; end if;
+  if new.movement_type in ('waste','sale') and new.quantity_delta>=0 then raise exception 'Waste and sales must decrease stock'; end if;
+  if new.movement_type='sale' and not is_system_deduction then raise exception 'Sale deductions are system-managed'; end if;
+  insert into public.inventory_balances(item_id,quantity_on_hand,updated_at)
+  values(new.item_id,new.quantity_delta,now())
+  on conflict(item_id) do update set quantity_on_hand=public.inventory_balances.quantity_on_hand+excluded.quantity_on_hand,updated_at=now()
+  returning quantity_on_hand into next_qty;
+  if next_qty<0 then raise exception 'Insufficient stock for %; available: %', (select name from public.inventory_items where id=new.item_id), next_qty-new.quantity_delta; end if;
+  if new.movement_type='stock_in' and new.purchase_unit_price is not null then
+    update public.inventory_items set purchase_price=new.purchase_unit_price,purchase_price_updated_at=now(),updated_at=now() where id=new.item_id;
+  end if;
+  return new;
+end;
+$$;
+
+-- Idempotent, transactional deduction. An order either deducts all required ingredients
+-- or the order/status change rolls back. Optional recipe lines are skipped if insufficient.
+create or replace function public.hibi_apply_order_inventory(p_order_id uuid)
+returns void language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+declare
+  v_order public.pos_orders%rowtype;
+  v_need record;
+  v_available numeric(14,3);
+  v_movement_id uuid;
+  v_unit_cost numeric(14,6);
+  v_total numeric(14,4);
+  v_enabled_at timestamptz;
+begin
+  select * into v_order from public.pos_orders where id=p_order_id for update;
+  if not found or v_order.status<>'Preparing' then return; end if;
+  select enabled_at into v_enabled_at from public.inventory_deduction_config where singleton=true;
+  if v_enabled_at is null or v_order.created_at<v_enabled_at then return; end if;
+  if exists(select 1 from public.inventory_order_deduction_runs where order_id=p_order_id) then return; end if;
+  insert into public.inventory_order_deduction_runs(order_id) values(p_order_id);
+
+  perform set_config('hibi.inventory_deduction','on',true);
+  for v_need in
+    select order_item_id,item_id,sum(required_qty) as required_qty,bool_and(optional) as optional
+    from (
+      select oi.id as order_item_id,rl.item_id,(oi.qty*rl.quantity_per_unit)::numeric as required_qty,rl.optional
+      from public.pos_order_items oi
+      join public.inventory_recipe_lines rl on rl.recipe_type='product'
+        and rl.product_id=oi.product_id and rl.product_size=coalesce(oi.size,'Regular')
+      where oi.order_id=p_order_id
+      union all
+      select oi.id as order_item_id,rl.item_id,(oi.qty*rl.quantity_per_unit)::numeric as required_qty,rl.optional
+      from public.pos_order_items oi
+      cross join lateral jsonb_array_elements(coalesce(oi.addons,'[]'::jsonb)) addon
+      join public.inventory_recipe_lines rl on rl.recipe_type='addon' and rl.addon_id=addon->>'id'
+      where oi.order_id=p_order_id
+    ) recipe_need
+    group by order_item_id,item_id
+    order by item_id,order_item_id
+  loop
+    select coalesce(quantity_on_hand,0) into v_available from public.inventory_balances where item_id=v_need.item_id for update;
+    v_available:=coalesce(v_available,0);
+    if v_available<v_need.required_qty and v_need.optional then continue; end if;
+    if v_available<v_need.required_qty then
+      raise exception 'Insufficient inventory for %: need %, available %',
+        (select name from public.inventory_items where id=v_need.item_id),v_need.required_qty,v_available;
+    end if;
+    select case when purchase_conversion_to_base>0 and purchase_price is not null
+      then purchase_price/purchase_conversion_to_base else null end
+      into v_unit_cost from public.inventory_items where id=v_need.item_id;
+    v_total:=case when v_unit_cost is null then null else round(v_unit_cost*v_need.required_qty,4) end;
+    insert into public.inventory_movements(item_id,movement_type,quantity_delta,reason,reference,created_by,created_by_name)
+    values(v_need.item_id,'sale',-v_need.required_qty,'Recipe usage','Order '||coalesce(v_order.order_code,v_order.order_number::text),v_order.created_by,'System · order '||coalesce(v_order.order_code,v_order.order_number::text))
+    returning id into v_movement_id;
+    insert into public.inventory_order_deductions(order_id,order_item_id,item_id,movement_id,quantity,unit_cost,total_cost)
+    values(p_order_id,v_need.order_item_id,v_need.item_id,v_movement_id,v_need.required_qty,v_unit_cost,v_total);
+  end loop;
+end;
+$$;
+create or replace function public.hibi_inventory_deduct_on_order_item()
+returns trigger language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+begin
+  perform public.hibi_apply_order_inventory(new.order_id);
+  return null;
+end;
+$$;
+drop trigger if exists inventory_deduct_after_order_items on public.pos_order_items;
+create constraint trigger inventory_deduct_after_order_items
+after insert on public.pos_order_items
+deferrable initially deferred
+for each row execute function public.hibi_inventory_deduct_on_order_item();
+
+create or replace function public.hibi_inventory_deduct_on_status_change()
+returns trigger language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+begin
+  if new.status='Preparing' and old.status is distinct from new.status then
+    perform public.hibi_apply_order_inventory(new.id);
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists inventory_deduct_after_status_change on public.pos_orders;
+create trigger inventory_deduct_after_status_change
+after update of status on public.pos_orders
+for each row execute function public.hibi_inventory_deduct_on_status_change();
+
+-- Shared availability check for POS and online ordering. Unconfigured variants remain unaffected.
+drop function if exists public.hibi_inventory_variant_availability(text,text,text[]);
+create or replace function public.hibi_inventory_variant_availability(
+  p_product_id text,p_size text,p_addon_ids text[] default '{}'::text[],p_qty integer default 1
+)
+returns table(is_available boolean, unavailable_ingredients text[])
+language plpgsql stable security definer
+set search_path=pg_catalog,public
+as $$
+begin
+  if p_qty is null or p_qty not between 1 and 10000 then raise exception 'Invalid item quantity'; end if;
+  return query
+  with required as (
+    select rl.item_id,rl.optional
+    from public.inventory_recipe_lines rl
+    where rl.recipe_type='product' and rl.product_id=p_product_id and rl.product_size=coalesce(p_size,'Regular')
+    union all
+    select rl.item_id,rl.optional
+    from public.inventory_recipe_lines rl
+    where rl.recipe_type='addon' and rl.addon_id=any(coalesce(p_addon_ids,'{}'::text[]))
+  ), shortages as (
+    select distinct i.name
+    from required r join public.inventory_items i on i.id=r.item_id
+    left join public.inventory_balances b on b.item_id=i.id
+    where not r.optional and coalesce(b.quantity_on_hand,0) < (
+      select sum(rl.quantity_per_unit)*p_qty
+      from public.inventory_recipe_lines rl
+      where rl.item_id=r.item_id and (
+        (rl.recipe_type='product' and rl.product_id=p_product_id and rl.product_size=coalesce(p_size,'Regular'))
+        or (rl.recipe_type='addon' and rl.addon_id=any(coalesce(p_addon_ids,'{}'::text[])))
+      )
+    )
+  )
+  select not exists(select 1 from shortages),
+         coalesce((select array_agg(name order by name) from shortages),'{}'::text[]);
+end;
+$$;
+grant execute on function public.hibi_inventory_variant_availability(text,text,text[],integer) to authenticated,service_role;
+grant execute on function public.hibi_apply_order_inventory(uuid) to service_role;
+
+-- Enable realtime refresh for stock, item prices, and recipe changes.
+alter publication supabase_realtime add table public.inventory_balances;
+alter publication supabase_realtime add table public.inventory_items;
+alter publication supabase_realtime add table public.inventory_recipe_lines;
+
+-- Atomic physical count + variance movement, so a failed adjustment cannot leave a count half-saved.
+create or replace function public.hibi_record_inventory_stock_count(
+  p_item_id uuid,p_actual_purchase_quantity numeric,p_reason text,p_reference text default null
+)
+returns jsonb language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+declare
+  v_item public.inventory_items%rowtype;
+  v_system numeric(14,3);
+  v_actual numeric(14,3);
+  v_variance numeric(14,3);
+  v_count_id uuid;
+  v_actor text;
+begin
+  if auth.uid() is null or not public.hibi_is_active_user() then raise exception 'Active authenticated user required'; end if;
+  if p_actual_purchase_quantity is null or p_actual_purchase_quantity<0 then raise exception 'Enter a valid physical quantity'; end if;
+  if length(btrim(coalesce(p_reason,'')))<2 then raise exception 'A reason is required for every physical stock count'; end if;
+  select * into v_item from public.inventory_items where id=p_item_id and active for update;
+  if not found then raise exception 'Inventory item not found'; end if;
+  select coalesce(quantity_on_hand,0) into v_system from public.inventory_balances where item_id=p_item_id for update;
+  v_system:=coalesce(v_system,0);
+  v_actual:=round(p_actual_purchase_quantity*v_item.purchase_conversion_to_base,3);
+  v_variance:=round(v_actual-v_system,3);
+  select coalesce(display_name,username,'Staff') into v_actor from public.user_profiles where auth_user_id=auth.uid();
+  insert into public.inventory_stock_counts(item_id,system_quantity,actual_quantity,variance,purchase_unit,actual_purchase_quantity,purchase_conversion_to_base,reason,counted_by,counted_by_name)
+  values(p_item_id,v_system,v_actual,v_variance,v_item.purchase_unit,p_actual_purchase_quantity,v_item.purchase_conversion_to_base,btrim(p_reason),auth.uid(),coalesce(v_actor,'Staff'))
+  returning id into v_count_id;
+  if v_variance<>0 then
+    insert into public.inventory_movements(item_id,movement_type,quantity_delta,entered_quantity,entered_unit,reason,reference,created_by,created_by_name)
+    values(p_item_id,'adjustment',v_variance,p_actual_purchase_quantity,v_item.purchase_unit,btrim(p_reason),coalesce(nullif(btrim(p_reference),''),'Physical stock count'),auth.uid(),coalesce(v_actor,'Staff'));
+  end if;
+  return jsonb_build_object('id',v_count_id,'system_quantity',v_system,'actual_quantity',v_actual,'variance',v_variance,'purchase_unit',v_item.purchase_unit);
+end;
+$$;
+grant execute on function public.hibi_record_inventory_stock_count(uuid,numeric,text,text) to authenticated;
+
+-- Save a complete recipe atomically so a failed save cannot erase the previous recipe.
+create or replace function public.hibi_save_inventory_recipe(
+  p_recipe_type text,p_product_id text,p_product_size text,p_addon_id text,p_lines jsonb
+)
+returns integer language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+declare v_line jsonb;v_count integer:=0;v_item uuid;v_qty numeric;
+begin
+  if not public.hibi_is_superuser() then raise exception 'Only a superuser can manage recipes'; end if;
+  if p_recipe_type not in ('product','addon') then raise exception 'Invalid recipe type'; end if;
+  if jsonb_typeof(p_lines) is distinct from 'array' or jsonb_array_length(p_lines)=0 then raise exception 'Add at least one ingredient'; end if;
+  if p_recipe_type='product' and (nullif(btrim(p_product_id),'') is null or nullif(btrim(p_product_size),'') is null or p_addon_id is not null) then raise exception 'Select a product size'; end if;
+  if p_recipe_type='addon' and (nullif(btrim(p_addon_id),'') is null or p_product_id is not null or p_product_size is not null) then raise exception 'Select an add-on'; end if;
+  for v_line in select * from jsonb_array_elements(p_lines) loop
+    v_item:=(v_line->>'item_id')::uuid;v_qty:=(v_line->>'quantity_per_unit')::numeric;
+    if v_qty is null or v_qty<=0 then raise exception 'Recipe quantities must be greater than zero'; end if;
+    if not exists(select 1 from public.inventory_items where id=v_item and active) then raise exception 'A recipe ingredient is missing or inactive'; end if;
+  end loop;
+  if p_recipe_type='product' then
+    delete from public.inventory_recipe_lines where recipe_type='product' and product_id=p_product_id and product_size=p_product_size;
+  else
+    delete from public.inventory_recipe_lines where recipe_type='addon' and addon_id=p_addon_id;
+  end if;
+  for v_line in select * from jsonb_array_elements(p_lines) loop
+    insert into public.inventory_recipe_lines(recipe_type,product_id,product_size,addon_id,item_id,quantity_per_unit,optional,created_by,updated_at)
+    values(p_recipe_type,p_product_id,p_product_size,p_addon_id,(v_line->>'item_id')::uuid,
+      (v_line->>'quantity_per_unit')::numeric,coalesce((v_line->>'optional')::boolean,false),auth.uid(),now());
+    v_count:=v_count+1;
+  end loop;
+  return v_count;
+end;
+$$;
+grant execute on function public.hibi_save_inventory_recipe(text,text,text,text,jsonb) to authenticated;

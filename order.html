@@ -76,7 +76,7 @@ function openProduct(id){
  const p=catalog.products.find(x=>String(x.id)===String(id));if(!p||p.soldOut)return;
  activeProductId=String(id);$('modal-qty').textContent='1';$('modal-product-name').textContent=p.name;
  const sizes=Object.entries(priceMap(p)).filter(([k,v])=>v!==null&&Number.isFinite(Number(v)));
- let html='<div class="field"><label>Size</label><select id="size-'+esc(p.id)+'">'+sizes.map(([k,v])=>'<option value="'+esc(k)+'">'+esc(k)+' · '+money(v)+'</option>').join('')+'</select></div>';
+ const availableSizes=sizes.filter(([k])=>p.sizeAvailability?.[k]!==false);if(!availableSizes.length)return;let html='<div class="field"><label>Size</label><select id="size-'+esc(p.id)+'">'+sizes.map(([k,v])=>'<option value="'+esc(k)+'" '+(p.sizeAvailability?.[k]===false?'disabled':'')+' '+(k===availableSizes[0][0]?'selected':'')+'>'+esc(k)+' · '+money(v)+(p.sizeAvailability?.[k]===false?' · Sold out':'')+'</option>').join('')+'</select></div>';
  if((p.isDrink??p.is_drink)&&catalog.addons.length)html+='<div class="field addon-field"><div class="addon-head"><label>Add-ons</label><span>Optional extras</span></div><div class="addonlist">'+catalog.addons.map(a=>'<label class="addon"><input type="checkbox" data-addon-for="'+esc(p.id)+'" value="'+esc(a.id)+'"><span class="addon-copy"><span class="addon-name">'+esc(a.name)+'</span><strong class="addon-price">+'+money(a.price)+'</strong></span></label>').join('')+'</div></div>';
  $('modal-product-content').innerHTML=html;
  $('product-modal').classList.remove('hidden');
@@ -88,7 +88,7 @@ $('modal-qty-plus').onclick=()=>$('modal-qty').textContent=Math.min(20,Number($(
 $('modal-add').onclick=()=>{if(!activeProductId)return;const added=addToCart(activeProductId,Number($('modal-qty').textContent)||1);$('product-modal').classList.add('hidden');if(!added){$('menu-message').classList.remove('hidden');$('menu-message').textContent='This item just sold out. Please choose another item.';}};
 function addToCart(id,quantity=1){
  const p=catalog.products.find(x=>String(x.id)===String(id));if(!p||p.soldOut)return false;
- const cfg=selectedProductConfig(id),size=cfg.size,price=Number(priceMap(p)[size]);
+ const cfg=selectedProductConfig(id),size=cfg.size;if(p.sizeAvailability?.[size]===false)return false;const price=Number(priceMap(p)[size]);
  const addons=cfg.addons.map(aid=>catalog.addons.find(a=>String(a.id)===String(aid))).filter(Boolean).map(a=>({id:String(a.id),name:a.name,price:Number(a.price)||0}));
  const unitPrice=price+addons.reduce((n,a)=>n+a.price,0),key=[id,size,addons.map(a=>a.id).sort().join(',')].join('|');
  const old=cart.find(x=>x.key===key);
