@@ -171,6 +171,7 @@ function startAvailabilityRealtime(){
    if(product)product.soldOut=payload.eventType==='DELETE'?false:row.status==='SoldOut';
    renderMenu();renderCart();
   })
+  .on('postgres_changes',{event:'*',schema:'public',table:'inventory_product_availability'},()=>loadMenu())
   .subscribe(status=>{
    if(status==='SUBSCRIBED'){
     if(availabilityFallbackTimer){clearInterval(availabilityFallbackTimer);availabilityFallbackTimer=null;}
