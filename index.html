@@ -1717,6 +1717,7 @@ function scheduleLiveOrderRefresh(){
       else if(activePage==='page-orders') renderOrdersPage();
       else if(activePage==='page-reports') renderReports();
       else if(activePage==='page-settings') renderSettings();
+      else if(activePage==='page-shifts') renderShiftsPage();
       // Avoid re-rendering the POS while a cashier is building an in-progress cart.
     }catch(e){ console.warn('Live order refresh failed',e); }
     finally{ LIVE_ORDER_REFRESHING=false; }
@@ -1762,10 +1763,11 @@ function scheduleLiveSharedRefresh(table){
         if(document.getElementById('page-pos')?.classList.contains('active')) renderPOS();
         if(document.getElementById('page-settings')?.classList.contains('active')) renderSettings();
       }
-      if(tables.some(t=>['daily_expenses','owner_expenses','cash_movements','eod_reconciliations'].includes(t))){
+      if(tables.some(t=>['daily_expenses','owner_expenses','cash_movements','eod_reconciliations','pos_refunds'].includes(t))){
         await loadFinancialRows();
       }
       if(tables.includes('cash_shifts')) await loadShifts();
+      if(tables.includes('audit_logs') && document.getElementById('page-audit')?.classList.contains('active')) await renderAuditLog();
       if(tables.includes('fund_transactions') && isSuperuser()) await loadFundTransactions();
       if(tables.includes('fund_balance_snapshots')) await loadFundSnapshots();
       if(tables.some(t=>t!=='app_data')){
@@ -1773,6 +1775,8 @@ function scheduleLiveSharedRefresh(table){
         if(activePage==='page-dashboard') renderDashboard();
         else if(activePage==='page-reports') renderReports();
         else if(activePage==='page-settings') renderSettings();
+        else if(activePage==='page-shifts') renderShiftsPage();
+        else if(activePage==='page-expenses') renderExpensesPage();
       }
       markDatabaseHealthy();
     }catch(e){ console.warn('Live shared POS refresh failed',e); }
@@ -1792,6 +1796,11 @@ function startLiveOrderSync(){
     .channel('hibi-live-pos')
     .on('postgres_changes',{event:'*',schema:'public',table:'pos_orders'},scheduleLiveOrderRefresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'pos_order_items'},scheduleLiveOrderRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'online_order_details'},scheduleLiveOrderRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'pos_refunds'},()=>scheduleLiveSharedRefresh('pos_refunds'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'audit_logs'},()=>scheduleLiveSharedRefresh('audit_logs'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'monthly_report_settings'},()=>scheduleLiveSharedRefresh('monthly_report_settings'))
+    .on('postgres_changes',{event:'*',schema:'public',table:'monthly_report_log'},()=>scheduleLiveSharedRefresh('monthly_report_log'))
     .on('postgres_changes',{event:'*',schema:'public',table:'product_availability'},scheduleLiveAvailabilityRefresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'app_data'},()=>scheduleLiveSharedRefresh('app_data'))
     .on('postgres_changes',{event:'*',schema:'public',table:'cash_shifts'},()=>scheduleLiveSharedRefresh('cash_shifts'))
