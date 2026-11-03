@@ -121,6 +121,9 @@ begin
   on conflict(item_id) do update set quantity_on_hand=public.inventory_balances.quantity_on_hand+excluded.quantity_on_hand,updated_at=now()
   returning quantity_on_hand into next_qty;
   if next_qty<0 then raise exception 'Insufficient stock for %; available: %', (select name from public.inventory_items where id=new.item_id), next_qty-new.quantity_delta; end if;
+  if new.movement_type='stock_in' and new.purchase_unit_price is not null then
+    update public.inventory_items set purchase_price=new.purchase_unit_price,purchase_price_updated_at=now(),updated_at=now() where id=new.item_id;
+  end if;
   return new;
 end;
 $$;
