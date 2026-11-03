@@ -61,6 +61,7 @@ create table if not exists public.inventory_stock_counts (
 );
 create index if not exists inventory_stock_counts_item_date_idx
   on public.inventory_stock_counts(item_id,counted_at desc);
+alter table public.inventory_stock_counts add column if not exists actual_purchase_quantity numeric(14,3), add column if not exists purchase_conversion_to_base numeric(14,3);
 
 create table if not exists public.inventory_order_deductions (
   id uuid primary key default gen_random_uuid(),
@@ -309,8 +310,8 @@ begin
   v_actual:=round(p_actual_purchase_quantity*v_item.purchase_conversion_to_base,3);
   v_variance:=round(v_actual-v_system,3);
   select coalesce(display_name,username,'Staff') into v_actor from public.user_profiles where auth_user_id=auth.uid();
-  insert into public.inventory_stock_counts(item_id,system_quantity,actual_quantity,variance,purchase_unit,reason,counted_by,counted_by_name)
-  values(p_item_id,v_system,v_actual,v_variance,v_item.purchase_unit,btrim(p_reason),auth.uid(),coalesce(v_actor,'Staff'))
+  insert into public.inventory_stock_counts(item_id,system_quantity,actual_quantity,variance,purchase_unit,actual_purchase_quantity,purchase_conversion_to_base,reason,counted_by,counted_by_name)
+  values(p_item_id,v_system,v_actual,v_variance,v_item.purchase_unit,p_actual_purchase_quantity,v_item.purchase_conversion_to_base,btrim(p_reason),auth.uid(),coalesce(v_actor,'Staff'))
   returning id into v_count_id;
   if v_variance<>0 then
     insert into public.inventory_movements(item_id,movement_type,quantity_delta,entered_quantity,entered_unit,reason,reference,created_by,created_by_name)
