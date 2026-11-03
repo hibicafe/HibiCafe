@@ -49,7 +49,7 @@ set search_path=pg_catalog,public
 as $$
 begin
   perform public.hibi_refresh_inventory_product_availability();
-  return coalesce(new,old);
+  if tg_op='DELETE' then return old; else return new; end if;
 end;
 $$;
 
