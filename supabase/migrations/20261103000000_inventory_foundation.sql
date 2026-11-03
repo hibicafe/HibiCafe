@@ -9,6 +9,11 @@ create table if not exists public.inventory_categories (
   created_by uuid references auth.users(id)
 );
 
+insert into public.inventory_categories(name,sort_order) values
+  ('Coffee',10),('Dairy',20),('Syrups & Flavors',30),('Powders',40),
+  ('Packaging',50),('Other Supplies',60)
+on conflict(name) do nothing;
+
 create table if not exists public.inventory_items (
   id uuid primary key default gen_random_uuid(),
   name text not null,
