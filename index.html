@@ -2172,9 +2172,10 @@ function openProductModal(pr){
 }
 
 function addToCart(pr, size, addons, qty, freeUpsize=false){
-  const existing=CART.find(i=>i.productId===pr.id&&i.size===size&&i.addons.filter(a=>a?.promo!=='free-upsize').map(a=>a.id).sort().join(',')===addons.map(a=>a.id).sort().join(','));
+  const addonSignature=addons.map(a=>a.id).sort().join(',');
+  const existingQty=CART.filter(i=>i.productId===pr.id&&i.size===size&&i.addons.filter(a=>a?.promo!=='free-upsize').map(a=>a.id).sort().join(',')===addonSignature).reduce((sum,i)=>sum+(Number(i.qty)||0),0);
   const maxAvailable=inventoryMaxAvailableQty(pr.id,size,addons.map(a=>a.id));
-  if((Number(existing?.qty)||0)+Number(qty||0)>maxAvailable){toast(inventoryStockLimitMessage(pr.name,maxAvailable));return false;}
+  if(existingQty+Number(qty||0)>maxAvailable){toast(inventoryStockLimitMessage(pr.name,maxAvailable));return false;}
   const priceMap=orderChannel==='GrabFood'?(pr.grabPrices||pr.sizes):pr.sizes;
   const key16=findDrinkSizeKey(priceMap,16);
   const key20=findDrinkSizeKey(priceMap,20);
