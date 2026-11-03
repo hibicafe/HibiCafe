@@ -907,8 +907,9 @@ let INVENTORY_BALANCES=new Map();
 
 function inventoryMaxAvailableQty(productId,size,addonIds=[]){
  const addons=new Set((addonIds||[]).map(String));
+ const normalizedSize=String(size||'Regular');
  const lines=INVENTORY_RECIPE_LINES.filter(line=>
-  (line.recipe_type==='product'&&String(line.product_id)===String(productId)&&String(line.product_size)===String(size))||
+  (line.recipe_type==='product'&&String(line.product_id)===String(productId)&&String(line.product_size)===normalizedSize)||
   (line.recipe_type==='addon'&&addons.has(String(line.addon_id)))
  );
  if(!lines.length)return Infinity;
@@ -933,7 +934,8 @@ function inventoryStockLimitMessage(name,max){
 function inventoryVariantAvailable(productId,size){return inventoryMaxAvailableQty(productId,size)>=1}
 function isInventoryProductSoldOut(pr){
  const sizes=Object.keys(pr?.sizes||{}).filter(k=>pr.sizes[k]!==null);
- return sizes.length>0&&sizes.every(k=>!inventoryVariantAvailable(pr.id,k));
+ const variants=sizes.length?sizes:['Regular'];
+ return variants.every(k=>!inventoryVariantAvailable(pr.id,k));
 }
 async function refreshInventoryVariantAvailability(){
  if(!supabaseClient)return;
