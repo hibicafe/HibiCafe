@@ -29,6 +29,11 @@ alter table public.inventory_items
   add constraint inventory_items_purchase_unit_valid
     check (purchase_unit in ('g','kg','ml','L','pc','bottle','carton','bag','pack','tray','box','jar','sachet','can','tin','case','bundle'));
 
+alter table public.inventory_items
+  drop constraint if exists inventory_items_stock_unit_valid,
+  add constraint inventory_items_stock_unit_valid
+    check (stock_unit in ('g','kg','ml','L','pc','bottle','carton','bag','pack','tray','box','jar','sachet','can','tin','case','bundle'));
+
 -- Preserve the quantity originally entered by staff for clear purchase-unit history.
 alter table public.inventory_movements
   add column if not exists entered_quantity numeric(14,3),
