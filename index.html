@@ -935,7 +935,7 @@ const supabaseClient = window.supabase?.createClient ? window.supabase.createCli
 let CURRENT_USER = null;
 let CURRENT_PROFILE = null;
 const DEFAULT_PERMISSIONS = ['pos','grab','orders','expenses','dashboard','reports','menu','audit','settings'];
-const STAFF_PERMISSIONS = new Set(['dashboard','pos','orders','expenses','reports']);
+const STAFF_PERMISSIONS = new Set(['dashboard','pos','orders','expenses','reports','inventory']);
 function isSuperuser(){ return CURRENT_PROFILE?.role==='superuser'; }
 function can(permission){ return isSuperuser() || STAFF_PERMISSIONS.has(permission); }
 function applyPermissions(){
