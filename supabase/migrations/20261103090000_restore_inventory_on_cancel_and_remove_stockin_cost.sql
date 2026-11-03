@@ -123,3 +123,5 @@ begin
   return new;
 end;
 $function$;
+
+revoke all on function public.hibi_inventory_restore_order(uuid) from public, anon, authenticated;
