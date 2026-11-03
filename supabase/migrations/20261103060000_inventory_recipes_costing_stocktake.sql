@@ -116,6 +116,7 @@ begin
   if new.movement_type in ('adjustment','waste') and length(btrim(coalesce(new.reason,'')))=0 then raise exception 'A reason is required for adjustments and waste'; end if;
   if new.movement_type in ('opening','stock_in') and new.quantity_delta<=0 then raise exception 'Opening stock and deliveries must increase stock'; end if;
   if new.movement_type in ('waste','sale') and new.quantity_delta>=0 then raise exception 'Waste and sales must decrease stock'; end if;
+  if new.movement_type='sale' and not is_system_deduction then raise exception 'Sale deductions are system-managed'; end if;
   insert into public.inventory_balances(item_id,quantity_on_hand,updated_at)
   values(new.item_id,new.quantity_delta,now())
   on conflict(item_id) do update set quantity_on_hand=public.inventory_balances.quantity_on_hand+excluded.quantity_on_hand,updated_at=now()
