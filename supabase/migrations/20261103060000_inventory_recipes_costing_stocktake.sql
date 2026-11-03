@@ -296,3 +296,38 @@ begin
 end;
 $$;
 grant execute on function public.hibi_record_inventory_stock_count(uuid,numeric,text,text) to authenticated;
+
+-- Save a complete recipe atomically so a failed save cannot erase the previous recipe.
+create or replace function public.hibi_save_inventory_recipe(
+  p_recipe_type text,p_product_id text,p_product_size text,p_addon_id text,p_lines jsonb
+)
+returns integer language plpgsql security definer
+set search_path=pg_catalog,public
+as $$
+declare v_line jsonb;v_count integer:=0;v_item uuid;v_qty numeric;
+begin
+  if not public.hibi_is_superuser() then raise exception 'Only a superuser can manage recipes'; end if;
+  if p_recipe_type not in ('product','addon') then raise exception 'Invalid recipe type'; end if;
+  if jsonb_typeof(p_lines) is distinct from 'array' or jsonb_array_length(p_lines)=0 then raise exception 'Add at least one ingredient'; end if;
+  if p_recipe_type='product' and (nullif(btrim(p_product_id),'') is null or nullif(btrim(p_product_size),'') is null or p_addon_id is not null) then raise exception 'Select a product size'; end if;
+  if p_recipe_type='addon' and (nullif(btrim(p_addon_id),'') is null or p_product_id is not null or p_product_size is not null) then raise exception 'Select an add-on'; end if;
+  for v_line in select * from jsonb_array_elements(p_lines) loop
+    v_item:=(v_line->>'item_id')::uuid;v_qty:=(v_line->>'quantity_per_unit')::numeric;
+    if v_qty is null or v_qty<=0 then raise exception 'Recipe quantities must be greater than zero'; end if;
+    if not exists(select 1 from public.inventory_items where id=v_item and active) then raise exception 'A recipe ingredient is missing or inactive'; end if;
+  end loop;
+  if p_recipe_type='product' then
+    delete from public.inventory_recipe_lines where recipe_type='product' and product_id=p_product_id and product_size=p_product_size;
+  else
+    delete from public.inventory_recipe_lines where recipe_type='addon' and addon_id=p_addon_id;
+  end if;
+  for v_line in select * from jsonb_array_elements(p_lines) loop
+    insert into public.inventory_recipe_lines(recipe_type,product_id,product_size,addon_id,item_id,quantity_per_unit,optional,created_by,updated_at)
+    values(p_recipe_type,p_product_id,p_product_size,p_addon_id,(v_line->>'item_id')::uuid,
+      (v_line->>'quantity_per_unit')::numeric,coalesce((v_line->>'optional')::boolean,false),auth.uid(),now());
+    v_count:=v_count+1;
+  end loop;
+  return v_count;
+end;
+$$;
+grant execute on function public.hibi_save_inventory_recipe(text,text,text,text,jsonb) to authenticated;
