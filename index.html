@@ -2936,7 +2936,19 @@ async function loadFundSnapshots(){
     rows=await response.json();
     if(!Array.isArray(rows)) throw new Error('The database returned an invalid latest fund snapshot.');
   }
-  FUND_SNAPSHOTS=rows.map(r=>({id:r.id,date:r.business_date,snapshotAt:r.snapshot_at,cash:Number(r.cash_balance)||0,gcash:Number(r.gcash_balance)||0,bank:Number(r.bank_balance)||0,type:r.snapshot_type||'daily',notes:r.notes||'',createdBy:r.created_by_name||''}));
+  FUND_SNAPSHOTS=rows.map(r=>({id:r.id,date:r.business_date,snapshotAt:r.snapshot_at,cash:Number(r.cash_balance)||0,gcash:Number(r.gcash_balance)||0,bank:Number(r.bank_balance)||0,type:r.snapshot_type||'daily',notes:r.notes||'',voidReason:r.void_reason||'',createdBy:r.created_by_name||''}));
+}
+async function editFundSnapshotComment(id){
+  if(!isSuperuser()){toast('Only a superuser can edit snapshot comments.');return;}
+  const snap=FUND_SNAPSHOTS.find(x=>String(x.id)===String(id));if(!snap)return;
+  const value=prompt('Edit snapshot comment:',snap.notes||'');if(value===null)return;
+  try{const r=await posApi('/rest/v1/rpc/update_fund_snapshot_notes',{method:'POST',body:JSON.stringify({p_snapshot_id:id,p_notes:value})});if(!r.ok)throw new Error(await r.text());await loadFundSnapshots();renderDashboard();toast('Snapshot comment updated.');}catch(e){toast(e.message||'Could not update comment.','error');}
+}
+async function voidFundSnapshot(id){
+  if(!isSuperuser()){toast('Only a superuser can void snapshots.');return;}
+  const reason=prompt('Reason for voiding this snapshot (required):');if(reason===null)return;if(!reason.trim()){toast('A reason is required.','error');return;}
+  if(!confirm('Void this snapshot? Its original values will remain in history but will no longer be used as a balance anchor.'))return;
+  try{const r=await posApi('/rest/v1/rpc/void_fund_balance_snapshot',{method:'POST',body:JSON.stringify({p_snapshot_id:id,p_reason:reason.trim()})});if(!r.ok)throw new Error(await r.text());await loadFundSnapshots();renderDashboard();toast('Snapshot voided; audit history preserved.');}catch(e){toast(e.message||'Could not void snapshot.','error');}
 }
 async function saveFundSnapshot(type='manual',notes='',businessDate=businessDayKey()){
   if(!isSuperuser() && type!=='reconciliation') throw new Error('Only a superuser can save manual or daily fund snapshots.');
@@ -3084,8 +3096,8 @@ function renderAvailableFunds(){
       <div style="font-size:12px;color:var(--text-dim);line-height:1.5;margin:0 0 12px;">${FUND_SNAPSHOTS.length?`Latest snapshot: ${esc(new Date(FUND_SNAPSHOTS[0].snapshotAt).toLocaleString('en-PH',{timeZone:'Asia/Manila'}))} · ${esc(FUND_SNAPSHOTS[0].type)} · balances are anchored to snapshots.`:'No fund snapshot yet. Create one with Snapshot Now or complete a reconciliation.'}</div>
       <details style="border-top:1px solid var(--line);padding-top:10px;">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;">Snapshot history <span style="font-weight:500;color:var(--text-dim);">(${FUND_SNAPSHOTS.length})</span></summary>
-        <div style="overflow-x:auto;margin-top:10px;"><table style="min-width:620px;"><thead><tr><th>Date / Time</th><th>Type</th><th class="num">Cash</th><th class="num">GCash</th><th class="num">Bank</th></tr></thead><tbody>
-        ${FUND_SNAPSHOTS.length?FUND_SNAPSHOTS.slice(0,20).map(x=>`<tr><td>${esc(new Date(x.snapshotAt).toLocaleString('en-PH',{timeZone:'Asia/Manila'}))}</td><td>${esc(x.type==='voided'?'VOIDED · '+(x.notes||'Invalid snapshot'):x.type)}</td><td class="num">${esc(PESO(x.cash))}</td><td class="num">${esc(PESO(x.gcash))}</td><td class="num">${esc(PESO(x.bank))}</td></tr>`).join(''):'<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:18px;">No snapshots recorded yet.</td></tr>'}
+        <div style="overflow-x:auto;margin-top:10px;"><table style="min-width:900px;"><thead><tr><th>Date / Time</th><th>Type</th><th class="num">Cash</th><th class="num">GCash</th><th class="num">Bank</th><th>Comment / Void reason</th><th>Actions</th></tr></thead><tbody>
+        ${FUND_SNAPSHOTS.length?FUND_SNAPSHOTS.slice(0,20).map(x=>'<tr><td>'+esc(new Date(x.snapshotAt).toLocaleString('en-PH',{timeZone:'Asia/Manila'}))+'</td><td>'+esc(x.type==='voided'?'VOIDED':x.type)+'</td><td class="num">'+esc(PESO(x.cash))+'</td><td class="num">'+esc(PESO(x.gcash))+'</td><td class="num">'+esc(PESO(x.bank))+'</td><td style="max-width:260px;white-space:normal;">'+esc(x.type==='voided'?(x.voidReason||'Voided snapshot'):(x.notes||'—'))+'</td><td style="white-space:nowrap;"><button class="btn btn-secondary btn-sm" onclick="editFundSnapshotComment(\''+x.id+'\')">Edit comment</button> '+(x.type!=='voided'?'<button class="btn btn-danger btn-sm" onclick="voidFundSnapshot(\''+x.id+'\')">Void</button>':'')+'</td></tr>').join(''):'<tr><td colspan="7" style="color:var(--text-dim);text-align:center;padding:18px;">No snapshots recorded yet.</td></tr>'}
         </tbody></table></div>
       </details>
       <details style="border-top:1px solid var(--line);padding-top:10px;">
