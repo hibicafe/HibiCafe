@@ -1426,7 +1426,7 @@ function openAvailabilityModal(){
       for(const pr of sold) await setProductAvailability(pr,false);
       renderPOS(); renderAvailabilityList(); toast('Manually sold-out items marked available. Items with depleted ingredients remain unavailable.');
     }catch(e){toast('Availability was NOT saved: '+(e?.message||e));}
-    finally{reset.textContent='Make All Available';reset.disabled=soldOutCount(dateKey)===0;}
+    finally{reset.textContent='Make All Available';reset.disabled=products.filter(isManualProductSoldOut).length===0;}
   };
   renderAvailabilityList();
 }
