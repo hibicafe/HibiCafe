@@ -90,7 +90,7 @@ create table if not exists public.inventory_order_deduction_runs (
 );
 alter table public.inventory_deduction_config enable row level security;
 alter table public.inventory_order_deduction_runs enable row level security;
-grant select on public.inventory_order_deduction_config,public.inventory_order_deduction_runs to authenticated;
+grant select on public.inventory_deduction_config,public.inventory_order_deduction_runs to authenticated;
 drop policy if exists inventory_deduction_config_read on public.inventory_deduction_config;
 create policy inventory_deduction_config_read on public.inventory_deduction_config for select to authenticated using (public.hibi_is_active_user());
 drop policy if exists inventory_deduction_runs_read on public.inventory_order_deduction_runs;
