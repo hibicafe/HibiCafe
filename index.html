@@ -533,6 +533,7 @@ details[open]>:not(summary){animation:details-in var(--motion-normal) var(--moti
       <button data-page="shifts" data-permission="expenses">Shifts</button>
       <button data-page="reports" data-permission="reports">Reports</button>
       <button data-page="menu" data-permission="menu">Menu Mgmt</button>
+      <button data-page="inventory" data-permission="inventory">Inventory</button>
       <button data-page="audit" data-permission="audit" title="Audit Log" aria-label="Audit Log">Audit Log</button>
       <button data-page="settings" data-permission="settings">Settings</button>
     </nav>
@@ -638,6 +639,9 @@ details[open]>:not(summary){animation:details-in var(--motion-normal) var(--moti
     <div class="page-scroll" id="menu-content"></div>
   </div>
 
+  <!-- INVENTORY PAGE -->
+  <div class="page" id="page-inventory"><div class="page-scroll" id="inventory-content" style="width:100%;padding:0;overflow:auto;background:#fff;"></div></div>
+
   <!-- AUDIT LOG PAGE -->
   <div class="page" id="page-audit">
     <div class="page-scroll" id="audit-content"></div>
@@ -654,6 +658,7 @@ details[open]>:not(summary){animation:details-in var(--motion-normal) var(--moti
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="inventory.js?v=20261103-inventory-phase1"></script>
 <script>
 /* ============================================================
    HIBI CAFE POS — single-file app
@@ -930,7 +935,7 @@ const supabaseClient = window.supabase?.createClient ? window.supabase.createCli
 let CURRENT_USER = null;
 let CURRENT_PROFILE = null;
 const DEFAULT_PERMISSIONS = ['pos','grab','orders','expenses','dashboard','reports','menu','audit','settings'];
-const STAFF_PERMISSIONS = new Set(['dashboard','pos','orders','expenses','reports']);
+const STAFF_PERMISSIONS = new Set(['dashboard','pos','orders','expenses','reports','inventory']);
 function isSuperuser(){ return CURRENT_PROFILE?.role==='superuser'; }
 function can(permission){ return isSuperuser() || STAFF_PERMISSIONS.has(permission); }
 function applyPermissions(){
@@ -1871,6 +1876,7 @@ function goToPage(pageId){
   }
   if(pageId==='reports') renderReports();
   if(pageId==='menu') renderMenuMgmt();
+  if(pageId==='inventory') renderInventoryPage();
   if(pageId==='audit') renderAuditLog();
   if(pageId==='settings') renderSettings();
 }
