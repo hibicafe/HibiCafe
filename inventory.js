@@ -246,29 +246,43 @@ function recipeCostingViewCss(){
  if($('recipe-costing-view-css'))return;
  const st=document.createElement('style');st.id='recipe-costing-view-css';
  st.textContent=`
- .recipe-profit-wrap{margin-top:22px;border:1px solid #e3e8df;border-radius:14px;background:#f8faf6;padding:18px}
- .recipe-profit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px}
- .recipe-profit-head h4{margin:0;color:#303a2b;font-size:17px;font-weight:800;letter-spacing:-.02em}
- .recipe-profit-head p{margin:5px 0 0;color:#81877a;font-size:11px;line-height:1.5}
- .recipe-profit-status{display:inline-flex;align-items:center;border-radius:7px;padding:6px 9px;background:#e9f1e5;color:#4d6840;font-size:10px;font-weight:800;letter-spacing:.02em}
+ .recipe-profit-wrap{margin-top:22px;border:1px solid #e1e5dc;border-radius:13px;background:#fff;overflow:hidden}
+ .recipe-profit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:20px 22px;background:#f5f7f2;border-bottom:1px solid #e6eae2}
+ .recipe-profit-head h4{margin:0;color:#30392b;font-size:19px;font-weight:800;letter-spacing:-.025em}
+ .recipe-profit-head p{margin:5px 0 0;color:#747b6d;font-size:12px;line-height:1.5}
+ .recipe-profit-status{display:inline-flex;align-items:center;border-radius:7px;padding:7px 10px;background:#e8f0e4;color:#4d6840;font-size:10px;font-weight:800;letter-spacing:.04em}
  .recipe-profit-status.incomplete{background:#fff1dc;color:#98621d}
- .recipe-profit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
- .recipe-profit-card{min-width:0;border:1px solid #e5e9e1;border-radius:11px;background:#fff;padding:15px}
- .recipe-profit-card.walk{border-top:3px solid #72845d}.recipe-profit-card.grab{border-top:3px solid #c18a45}
- .recipe-profit-label{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#858b7d}
- .recipe-profit-value{display:block;margin:8px 0 4px;font-size:25px;line-height:1.15;font-weight:850;letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:#30392b;overflow-wrap:anywhere}
- .recipe-profit-card.walk .recipe-profit-value{color:#3f6338}.recipe-profit-card.grab .recipe-profit-value{color:#98652b}
- .recipe-profit-caption{font-size:10px;color:#858b7d;line-height:1.45;min-height:28px}
- .recipe-profit-rule{height:1px;background:#edf0e9;margin:12px 0}
- .recipe-profit-breakdown{display:grid;gap:8px}
- .recipe-profit-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:11px;color:#73796d;line-height:1.4}
- .recipe-profit-row strong{color:#3e4538;font-size:11px;font-weight:750;text-align:right;font-variant-numeric:tabular-nums}
- .recipe-profit-row.total{padding-top:8px;border-top:1px solid #edf0e9;color:#40483a;font-weight:750}
- .recipe-profit-row.total strong{font-size:13px}
- .recipe-profit-foot{margin-top:12px;color:#828879;font-size:10px;line-height:1.55}
- .recipe-profit-missing{margin-top:12px;padding:10px 12px;border-radius:9px;background:#fff5e7;color:#8b5d20;font-size:11px;line-height:1.5}
- @media(max-width:900px){.recipe-profit-grid{grid-template-columns:1fr}.recipe-profit-card{padding:14px}.recipe-profit-value{font-size:23px}.recipe-profit-caption{min-height:0}}
- @media(max-width:560px){.recipe-profit-wrap{padding:12px;margin-top:16px}.recipe-profit-head h4{font-size:15px}.recipe-profit-value{font-size:22px}}
+ .recipe-report-section{padding:19px 22px;border-bottom:1px solid #e9ece6}
+ .recipe-report-section:last-child{border-bottom:0}
+ .recipe-report-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px}
+ .recipe-report-title strong{font-size:13px;font-weight:800;color:#343d2d}
+ .recipe-report-title span{font-size:11px;color:#818779}
+ .recipe-cost-total{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 15px;margin-bottom:13px;background:#f7f9f5;border:1px solid #e7ebe3;border-radius:9px}
+ .recipe-cost-total span{font-size:12px;color:#687060;font-weight:700}
+ .recipe-cost-total strong{font-size:22px;line-height:1.15;color:#303b29;font-variant-numeric:tabular-nums}
+ .recipe-report-table-wrap{width:100%;overflow-x:auto}
+ .recipe-report-table{width:100%;border-collapse:collapse;font-size:12px;min-width:570px}
+ .recipe-report-table th{padding:10px 12px;background:#f5f7f2;color:#707869;text-align:left;font-size:10px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;border-bottom:1px solid #e5e9e1;white-space:nowrap}
+ .recipe-report-table td{padding:11px 12px;border-bottom:1px solid #edf0ea;color:#4c5346;vertical-align:middle}
+ .recipe-report-table tbody tr:last-child td{border-bottom:0}
+ .recipe-report-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .recipe-report-table .ingredient{font-weight:750;color:#343b30}
+ .recipe-report-table .muted{color:#92988d}
+ .recipe-report-table .missing{color:#98621d;font-weight:700}
+ .recipe-profit-comparison{width:100%;border-collapse:collapse;min-width:620px;font-size:12px}
+ .recipe-profit-comparison th,.recipe-profit-comparison td{padding:12px 14px;border-bottom:1px solid #e9ede6;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .recipe-profit-comparison thead th{background:#f5f7f2;color:#707869;font-size:10px;font-weight:800;letter-spacing:.045em;text-transform:uppercase}
+ .recipe-profit-comparison th:first-child,.recipe-profit-comparison td:first-child{text-align:left;white-space:normal}
+ .recipe-profit-comparison tbody th{font-weight:650;color:#626a5b}
+ .recipe-profit-comparison td{color:#3d4537}
+ .recipe-profit-comparison .walk-head{color:#4e6a40}
+ .recipe-profit-comparison .grab-head{color:#98652b}
+ .recipe-profit-comparison .profit-row th,.recipe-profit-comparison .profit-row td{background:#f7f9f5;font-weight:850;color:#34432d;border-top:1px solid #dfe6d9}
+ .recipe-profit-comparison .profit-row td{font-size:17px}
+ .recipe-profit-comparison .profit-row td.incomplete-value{font-size:13px;color:#9a6b2b}
+ .recipe-profit-foot{padding:13px 22px;background:#fafbf9;color:#7e8578;font-size:10px;line-height:1.6}
+ .recipe-profit-missing{margin:14px 22px 18px;padding:12px 14px;border-radius:8px;background:#fff5e7;color:#8b5d20;font-size:11px;line-height:1.55}
+ @media(max-width:650px){.recipe-profit-head{padding:16px}.recipe-report-section{padding:15px 13px}.recipe-profit-head h4{font-size:17px}.recipe-cost-total strong{font-size:20px}.recipe-profit-foot{padding:12px 14px}.recipe-profit-missing{margin:12px 13px 15px}}
  `;
  document.head.appendChild(st);
 }
@@ -294,7 +308,49 @@ async function recipeModal(){
  const ingredientCost=item=>{const price=item?.purchase_price,conversion=Number(item?.purchase_conversion_to_base??item?.purchase_conversion??item?.conversion_to_base);return price!==null&&price!==undefined&&price!==''&&Number.isFinite(Number(price))&&Number(price)>=0&&Number.isFinite(conversion)&&conversion>0?Number(price)/conversion:null};
  const addLine=(id='',qty='',optional=false)=>{const row=document.createElement('div');row.className='inv-modal-grid recipe-row';row.style.cssText='gap:7px;margin:8px 0;align-items:end';row.innerHTML='<div><label>Ingredient</label><select class="recipe-item"><option value="">Choose ingredient…</option>'+items.map(x=>'<option value="'+x.id+'" '+(x.id===id?'selected':'')+'>'+esc(x.name)+' ('+unitLabel(consumptionUnit(x))+')</option>').join('')+'</select></div><div><label>Qty / unit</label><input class="recipe-qty" type="number" min="0.001" step="0.001" value="'+esc(qty)+'"></div><div><label>Optional?</label><select class="recipe-optional"><option value="false" '+(!optional?'selected':'')+'>No</option><option value="true" '+(optional?'selected':'')+'>Yes</option></select></div><div class="recipe-line-cost inv-sub">Cost: —</div><button type="button" class="inv-btn secondary recipe-remove">×</button>';row.querySelector('.recipe-remove').onclick=()=>{row.remove();renderCosting()};row.querySelectorAll('select,input').forEach(el=>el.addEventListener('input',renderCosting));recipeLinesHost.appendChild(row);renderCosting()};
  const selectedTarget=()=>{const v=$('recipe-target').value;if(!v)return null;const parts=v.split('|'),addon=v.startsWith('addon|');if(addon){const a=addons.find(x=>x.id===parts[1]);return a?{addon:true,item:a,name:a.name,walkPrice:Number(a.price)||0,grabPrice:Number(a.grabPrice??a.price)||0}:null}const product=products.find(x=>x.id===parts[0]),size=parts.slice(1).join('|');return product?{addon:false,item:product,name:product.name+' · '+size,walkPrice:Number(product.sizes?.[size])||0,grabPrice:Number(product.grabPrices?.[size]??product.sizes?.[size])||0}:null};
- const renderCosting=()=>{let total=0,missing=[],lines=0;recipeLinesHost.querySelectorAll('.recipe-row').forEach(row=>{const item=items.find(x=>x.id===row.querySelector('.recipe-item')?.value),qty=Number(row.querySelector('.recipe-qty')?.value),unit=ingredientCost(item),out=row.querySelector('.recipe-line-cost');if(!item||!Number.isFinite(qty)||qty<=0){out.textContent='Cost: —';return}lines++;if(unit===null){missing.push(item.name);out.textContent='Cost: price not set';return}const cost=unit*qty;total+=cost;out.textContent='Cost: '+money(cost)+' ('+money(unit)+' / '+unitLabel(consumptionUnit(item))+')'});const t=selectedTarget();if(!t){summary.innerHTML='<div class="inv-sub">Choose a product to see its recipe cost and projected profit.</div>';return}if(!lines){summary.innerHTML='<div class="inv-sub">Add recipe ingredients to calculate cost and profit.</div>';return}const incomplete=missing.length>0,walkProfit=t.walkPrice-total,grabCommission=t.grabPrice*.25,grabNet=t.grabPrice-grabCommission,grabProfit=grabNet-total,walkMargin=t.walkPrice>0?walkProfit/t.walkPrice*100:null,grabMargin=grabNet>0?grabProfit/grabNet*100:null,pct=n=>n===null?'—':n.toFixed(1)+'%';summary.innerHTML='<section class="recipe-profit-wrap" aria-label="Cost and projected profit"><div class="recipe-profit-head"><div><h4>Cost &amp; projected profit</h4><p>'+esc(t.name)+' · Per serving · Ingredient cost only</p></div><span class="recipe-profit-status '+(incomplete?'incomplete':'')+'">'+(incomplete?'COST INCOMPLETE':'COST CALCULATED')+'</span></div><div class="recipe-profit-grid"><article class="recipe-profit-card cost"><div class="recipe-profit-label">1 · Recipe cost</div><strong class="recipe-profit-value">'+money(total)+'</strong><div class="recipe-profit-caption">Total ingredient cost per serving'+(incomplete?' · partial total':'')+'</div><div class="recipe-profit-rule"></div><div class="recipe-profit-breakdown"><div class="recipe-profit-row"><span>Ingredients with prices</span><strong>'+lines+' line'+(lines===1?'':'s')+'</strong></div><div class="recipe-profit-row"><span>Missing purchase prices</span><strong>'+missing.length+'</strong></div></div></article><article class="recipe-profit-card walk"><div class="recipe-profit-label">2 · Walk-in</div><strong class="recipe-profit-value">'+(incomplete?'—':money(walkProfit))+'</strong><div class="recipe-profit-caption">Projected profit per serving</div><div class="recipe-profit-rule"></div><div class="recipe-profit-breakdown"><div class="recipe-profit-row"><span>Selling price</span><strong>'+money(t.walkPrice)+'</strong></div><div class="recipe-profit-row"><span>Less recipe cost</span><strong>− '+money(total)+'</strong></div><div class="recipe-profit-row total"><span>Profit margin</span><strong>'+(incomplete?'—':pct(walkMargin))+'</strong></div></div></article><article class="recipe-profit-card grab"><div class="recipe-profit-label">3 · GrabFood</div><strong class="recipe-profit-value">'+(incomplete?'—':money(grabProfit))+'</strong><div class="recipe-profit-caption">Projected profit after 25% commission</div><div class="recipe-profit-rule"></div><div class="recipe-profit-breakdown"><div class="recipe-profit-row"><span>Listed price</span><strong>'+money(t.grabPrice)+'</strong></div><div class="recipe-profit-row"><span>25% commission</span><strong>− '+money(grabCommission)+'</strong></div><div class="recipe-profit-row"><span>After commission</span><strong>'+money(grabNet)+'</strong></div><div class="recipe-profit-row"><span>Less recipe cost</span><strong>− '+money(total)+'</strong></div><div class="recipe-profit-row total"><span>Profit margin on net</span><strong>'+(incomplete?'—':pct(grabMargin))+'</strong></div></div></article></div>'+(incomplete?'<div class="recipe-profit-missing"><strong>Action needed:</strong> Add a latest purchase price for '+missing.map(esc).join(', ')+'. Projected profit stays hidden until every recipe ingredient has a valid price.</div>':'')+'<div class="recipe-profit-foot">Projected profit subtracts ingredient cost only. It does not include packaging, labor, rent, utilities, or other operating expenses. GrabFood profit uses the listed price less a 25% commission.</div></section>'};
+ const renderCosting=()=>{
+  let total=0,missing=[],lines=0,ingredientRows=[];
+  recipeLinesHost.querySelectorAll('.recipe-row').forEach(row=>{
+   const item=items.find(x=>x.id===row.querySelector('.recipe-item')?.value);
+   const qty=Number(row.querySelector('.recipe-qty')?.value);
+   const unit=ingredientCost(item),out=row.querySelector('.recipe-line-cost');
+   if(!item||!Number.isFinite(qty)||qty<=0){out.textContent='Cost: —';return}
+   lines++;
+   if(unit===null){
+    missing.push(item.name);
+    ingredientRows.push({name:item.name,qty,unit:consumptionUnit(item),unitCost:null,lineCost:null});
+    out.textContent='Cost: price not set';
+    return;
+   }
+   const cost=unit*qty;total+=cost;
+   ingredientRows.push({name:item.name,qty,unit:consumptionUnit(item),unitCost:unit,lineCost:cost});
+   out.textContent='Cost: '+money(cost)+' ('+money(unit)+' / '+unitLabel(consumptionUnit(item))+')';
+  });
+  const t=selectedTarget();
+  if(!t){summary.innerHTML='<div class="inv-sub">Choose a product to see its recipe cost and projected profit.</div>';return}
+  if(!lines){summary.innerHTML='<div class="inv-sub">Add recipe ingredients to calculate cost and profit.</div>';return}
+  const incomplete=missing.length>0,walkProfit=t.walkPrice-total,grabCommission=t.grabPrice*.25,grabNet=t.grabPrice-grabCommission,grabProfit=grabNet-total;
+  const walkMargin=t.walkPrice>0?walkProfit/t.walkPrice*100:null,grabMargin=grabNet>0?grabProfit/grabNet*100:null;
+  const pct=n=>n===null?'—':n.toFixed(1)+'%';
+  const amount=n=>incomplete?'—':money(n);
+  const ingredientTable='<div class="recipe-report-table-wrap"><table class="recipe-report-table"><thead><tr><th>Ingredient</th><th class="num">Qty / serving</th><th class="num">Cost / unit</th><th class="num">Line cost</th></tr></thead><tbody>'+
+   ingredientRows.map(x=>'<tr><td class="ingredient">'+esc(x.name)+'</td><td class="num">'+fmt(x.qty)+' '+esc(unitLabel(x.unit))+'</td><td class="num">'+(x.unitCost===null?'<span class="missing">Price missing</span>':money(x.unitCost)+' / '+esc(unitLabel(x.unit)))+'</td><td class="num">'+(x.lineCost===null?'<span class="missing">—</span>':money(x.lineCost))+'</td></tr>').join('')+
+   '</tbody></table></div>';
+  const comparison='<div class="recipe-report-table-wrap"><table class="recipe-profit-comparison"><thead><tr><th>Per serving</th><th class="walk-head">Walk-in</th><th class="grab-head">GrabFood</th></tr></thead><tbody>'+
+   '<tr><th>Selling / listed price</th><td>'+money(t.walkPrice)+'</td><td>'+money(t.grabPrice)+'</td></tr>'+
+   '<tr><th>Platform commission</th><td>—</td><td>− '+money(grabCommission)+'</td></tr>'+
+   '<tr><th>Net proceeds</th><td>'+money(t.walkPrice)+'</td><td>'+money(grabNet)+'</td></tr>'+
+   '<tr><th>Recipe ingredient cost</th><td>− '+money(total)+'</td><td>− '+money(total)+'</td></tr>'+
+   '<tr class="profit-row"><th>Projected profit</th><td class="'+(incomplete?'incomplete-value':'')+'">'+amount(walkProfit)+'</td><td class="'+(incomplete?'incomplete-value':'')+'">'+amount(grabProfit)+'</td></tr>'+
+   '<tr><th>Profit margin</th><td>'+(incomplete?'—':pct(walkMargin))+'</td><td>'+(incomplete?'—':pct(grabMargin))+'</td></tr>'+
+   '</tbody></table></div>';
+  summary.innerHTML='<section class="recipe-profit-wrap" aria-label="Cost and projected profit report">'+
+   '<div class="recipe-profit-head"><div><h4>Cost &amp; projected profit</h4><p>'+esc(t.name)+' · Per serving</p></div><span class="recipe-profit-status '+(incomplete?'incomplete':'')+'">'+(incomplete?'COST INCOMPLETE':'COST CALCULATED')+'</span></div>'+
+   '<section class="recipe-report-section"><div class="recipe-report-title"><strong>1. Ingredient cost breakdown</strong><span>Latest purchase prices · Per serving</span></div><div class="recipe-cost-total"><span>Total recipe cost</span><strong>'+money(total)+(incomplete?'*':'')+'</strong></div>'+ingredientTable+'</section>'+
+   '<section class="recipe-report-section"><div class="recipe-report-title"><strong>2. Selling price &amp; projected profit</strong><span>Side-by-side channel comparison</span></div>'+comparison+'</section>'+
+   (incomplete?'<div class="recipe-profit-missing"><strong>Action needed:</strong> Add a latest purchase price for '+missing.map(esc).join(', ')+'. Projected profit is hidden until every recipe ingredient has a valid price. The recipe cost shown is a partial total.</div>':'')+
+   '<div class="recipe-profit-foot">Projected profit subtracts ingredient cost only. It does not include packaging, labor, rent, utilities, or other operating expenses. GrabFood profit uses the listed price less a 25% commission.</div></section>';
+ };
  const loadTarget=async()=>{recipeLinesHost.innerHTML='';summary.innerHTML='';const v=$('recipe-target').value;if(!v){renderCosting();return}const addon=v.startsWith('addon|'),parts=v.split('|');let q=supabaseClient.from('inventory_recipe_lines').select('item_id,quantity_per_unit,optional').eq('recipe_type',addon?'addon':'product');q=addon?q.eq('addon_id',parts[1]):q.eq('product_id',parts[0]).eq('product_size',parts.slice(1).join('|'));const r=await q;if(r.error){toast(r.error.message);return}(r.data||[]).forEach(x=>addLine(x.item_id,x.quantity_per_unit,x.optional));renderCosting()};
  $('recipe-target').onchange=()=>{updateDetail();loadTarget()};$('recipe-add-line').onclick=()=>addLine();
  $('recipe-save').onclick=async()=>{const target=$('recipe-target').value;if(!target){toast('Choose a product size or add-on.');return}const addon=target.startsWith('addon|'),parts=target.split('|'),payload=[];for(const row of recipeLinesHost.querySelectorAll('.recipe-row')){const item_id=row.querySelector('.recipe-item')?.value;if(!item_id)continue;const qty=Number(row.querySelector('.recipe-qty')?.value);if(!Number.isFinite(qty)||qty<=0){toast('Enter a valid ingredient quantity.');return}payload.push({item_id,quantity_per_unit:qty,optional:row.querySelector('.recipe-optional')?.value==='true'})}if(!payload.length){toast('Add at least one ingredient.');return}const saved=await supabaseClient.rpc('hibi_save_inventory_recipe',{p_recipe_type:addon?'addon':'product',p_product_id:addon?null:parts[0],p_product_size:addon?null:parts.slice(1).join('|'),p_addon_id:addon?parts[1]:null,p_lines:payload});if(saved.error){toast(saved.error.message);return}await writeAudit('inventory_recipe_saved','recipe',target,'',{lines:payload.length});closeInventoryView();await refreshInventoryVariantAvailability();toast('Recipe saved. Costing is calculated from current ingredient purchase prices.')};
