@@ -246,7 +246,79 @@ function recipeCostingViewCss(){
  if($('recipe-costing-view-css'))return;
  const st=document.createElement('style');st.id='recipe-costing-view-css';
  st.textContent=`
- .recipe-profit-wrap{margin-top:22px;border:1px solid #e1e5dc;border-radius:13px;background:#fff;overflow:hidden}
+ /* Recipe costing: high-contrast, restrained report styling */
+ .recipe-profit-wrap{margin-top:22px;border:1px solid #d7dbd1;border-radius:10px;background:#fff;overflow:hidden;color:#24291f}
+ .recipe-profit-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:19px 22px;background:#fff;border-bottom:2px solid #3b432f}
+ .recipe-profit-head h4{margin:0;color:#262d21;font-size:20px;font-weight:800;letter-spacing:-.02em}
+ .recipe-profit-head p{margin:5px 0 0;color:#5f6659;font-size:12px;line-height:1.5}
+ .recipe-profit-status{display:inline-flex;align-items:center;border:1px solid #647254;border-radius:4px;padding:6px 9px;background:#eef1e9;color:#34412b;font-size:10px;font-weight:800;letter-spacing:.04em}
+ .recipe-profit-status.incomplete{border-color:#a46c24;background:#fff5e6;color:#75470e}
+ .recipe-report-section{padding:19px 22px;border-bottom:1px solid #dfe3da}
+ .recipe-report-section:last-child{border-bottom:0}
+ .recipe-report-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 13px}
+ .recipe-report-title strong{font-size:14px;font-weight:800;color:#293123}
+ .recipe-report-title span{font-size:11px;color:#5d6557}
+ .recipe-cost-total{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 15px;margin-bottom:13px;background:#f4f6f1;border:1px solid #d7ddd0;border-left:4px solid #596849;border-radius:4px}
+ .recipe-cost-total span{font-size:12px;color:#394332;font-weight:750}
+ .recipe-cost-total strong{font-size:23px;line-height:1.15;color:#273321;font-variant-numeric:tabular-nums}
+ .recipe-report-table-wrap{width:100%;overflow-x:auto;border:1px solid #d9ded5;border-radius:5px}
+ .recipe-report-table{width:100%;border-collapse:collapse;font-size:12px;min-width:570px}
+ .recipe-report-table th{padding:11px 13px;background:#39432f;color:#fff;text-align:left;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid #293222;white-space:nowrap}
+ .recipe-report-table td{padding:12px 13px;border-bottom:1px solid #e0e4dc;color:#30372d;vertical-align:middle;background:#fff}
+ .recipe-report-table tbody tr:nth-child(even) td{background:#f6f7f4}
+ .recipe-report-table tbody tr:hover td{background:inherit}
+ .recipe-report-table tbody tr:last-child td{border-bottom:0}
+ .recipe-report-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .recipe-report-table .ingredient{font-weight:750;color:#242c20}
+ .recipe-report-table .muted{color:#5d6559}
+ .recipe-report-table .missing{color:#75470e;font-weight:800;background:#fff0d8;padding:4px 7px;border-radius:3px}
+ .recipe-profit-comparison{width:100%;border-collapse:collapse;min-width:620px;font-size:12px}
+ .recipe-profit-comparison th,.recipe-profit-comparison td{padding:12px 14px;border-bottom:1px solid #dfe3da;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ .recipe-profit-comparison thead th{background:#39432f;color:#fff;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid #293222}
+ .recipe-profit-comparison th:first-child,.recipe-profit-comparison td:first-child{text-align:left;white-space:normal}
+ .recipe-profit-comparison tbody th{font-weight:700;color:#333b2e;background:#f3f5f0}
+ .recipe-profit-comparison tbody tr:nth-child(even) td{background:#f6f7f4}
+ .recipe-profit-comparison td{color:#252c22}
+ .recipe-profit-comparison .walk-head,.recipe-profit-comparison .grab-head{color:#fff}
+ .recipe-profit-comparison .profit-row th,.recipe-profit-comparison .profit-row td{background:#35412d!important;color:#fff!important;font-weight:850;border-top:2px solid #263120;border-bottom:0}
+ .recipe-profit-comparison .profit-row td{font-size:17px}
+ .recipe-profit-comparison .profit-row td.incomplete-value{font-size:13px;color:#fff1d8!important}
+ .recipe-profit-foot{padding:13px 22px;background:#f5f6f3;border-top:1px solid #dfe3da;color:#4c5547;font-size:11px;line-height:1.6}
+ .recipe-profit-missing{margin:14px 22px 18px;padding:12px 14px;border:1px solid #e5c995;border-left:4px solid #a46c24;border-radius:4px;background:#fff7e9;color:#68440f;font-size:12px;line-height:1.55}
+ .recipe-browser-left,.recipe-browser-right{border:1px solid #d9ded5;border-radius:9px;box-shadow:none}
+ .recipe-browser-head{padding:16px;background:#f5f6f3;border-bottom:1px solid #d9ded5}
+ .recipe-browser-head strong{font-size:14px;color:#293123}
+ .recipe-browser-head input,.recipe-browser-head select{border:1px solid #bfc7b7;border-radius:5px;color:#252c22;background:#fff}
+ .recipe-product-list{padding:8px;background:#fff}
+ .recipe-product-card{border:1px solid transparent;border-bottom:1px solid #e6e9e3;border-radius:4px;padding:11px}
+ .recipe-product-card:hover{background:#f4f6f1;border-color:#d4dbcd}
+ .recipe-product-card.active{background:#e9eee3;border:1px solid #687957;box-shadow:inset 4px 0 #46583a}
+ .recipe-product-meta strong{color:#252d21;font-size:13px}
+ .recipe-product-meta span{color:#596253;font-size:11px}
+ .recipe-detail-head{background:#fff;border-bottom:1px solid #dfe3da}
+ .recipe-detail-head h4{color:#252d21}
+ .recipe-detail-head p{color:#596253}
+ .recipe-detail-body{background:#fff}
+ .recipe-size-tab{border:1px solid #aeb8a4;border-radius:5px;color:#35412d;background:#fff;padding:9px 13px}
+ .recipe-size-tab.active{background:#39432f;border-color:#39432f;color:#fff}
+ .recipe-editor-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:13px 14px;background:#f5f6f3;border:1px solid #dfe3da;border-radius:6px}
+ .recipe-editor-toolbar strong{display:block;color:#293123;font-size:13px;font-weight:800}
+ .recipe-editor-toolbar p{margin:4px 0 0;color:#596253;font-size:11px;line-height:1.45}
+ .recipe-editor-toolbar #recipe-add-line{margin:0;white-space:nowrap}
+ #recipe-lines{display:grid;gap:9px}
+ .recipe-detail-body .recipe-row{display:grid!important;grid-template-columns:minmax(190px,1.5fr) minmax(110px,.55fr) minmax(105px,.55fr) minmax(170px,.9fr) 42px!important;gap:10px!important;align-items:end!important;margin:0!important;padding:12px;background:#f7f8f5;border:1px solid #dfe3da;border-radius:6px}
+ .recipe-detail-body .recipe-row label{display:block;margin:0 0 6px;color:#3b4435;font-size:11px;font-weight:750}
+ .recipe-detail-body .recipe-row input,.recipe-detail-body .recipe-row select{width:100%;min-width:0;min-height:42px;padding:9px 10px;border:1px solid #bfc7b7;border-radius:5px;background:#fff;color:#252c22;font:inherit;font-size:12px}
+ .recipe-detail-body .recipe-row input:focus,.recipe-detail-body .recipe-row select:focus,.recipe-browser-head input:focus,.recipe-browser-head select:focus{outline:2px solid #77896a;outline-offset:1px;border-color:#596b49}
+ .recipe-detail-body .recipe-row .recipe-line-cost{align-self:center;color:#303a29;font-size:11px;font-weight:750;line-height:1.4}
+ .recipe-detail-body .recipe-row .recipe-remove{min-width:38px;min-height:40px;padding:6px 10px;border:1px solid #d6b9b4;background:#fff;color:#873c32;border-radius:5px;font-size:18px}
+ #recipe-add-line{margin-top:11px;border:1px solid #9da992;background:#fff;color:#35412d;border-radius:5px}
+ #recipe-add-line:hover{background:#f0f3ec}
+ #recipe-save{min-width:140px}
+ .recipe-empty{color:#596253}
+ @media(max-width:850px){.recipe-detail-body .recipe-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}.recipe-detail-body .recipe-row>div:first-child,.recipe-detail-body .recipe-row .recipe-line-cost{grid-column:1/-1}.recipe-detail-body .recipe-row .recipe-remove{grid-column:2;justify-self:end;width:100%}}
+ @media(max-width:650px){.recipe-profit-head{padding:15px}.recipe-report-section{padding:15px 12px}.recipe-profit-head h4{font-size:18px}.recipe-cost-total strong{font-size:20px}.recipe-profit-foot{padding:12px}.recipe-profit-missing{margin:12px}.recipe-detail-body{padding:12px}.recipe-detail-body .recipe-row{padding:10px;gap:8px!important}}
+ 
  .recipe-profit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:20px 22px;background:#f5f7f2;border-bottom:1px solid #e6eae2}
  .recipe-profit-head h4{margin:0;color:#30392b;font-size:19px;font-weight:800;letter-spacing:-.025em}
  .recipe-profit-head p{margin:5px 0 0;color:#747b6d;font-size:12px;line-height:1.5}
@@ -290,7 +362,7 @@ async function recipeModal(){
  if(!isSuperuser()){toast('Only superusers can manage recipes.');return}
  const products=Array.isArray(MENU?.products)?MENU.products:[],addons=Array.isArray(ADDONS)?ADDONS:[];
  const targets='<option value="">Choose…</option>'+products.filter(p=>p.active!==false).flatMap(p=>Object.keys(p.sizes||{}).map(s=>'<option value="'+esc(p.id)+'|'+esc(s)+'">'+esc(p.name)+' · '+esc(s)+'</option>')).join('')+addons.filter(a=>a.active!==false).map(a=>'<option value="addon|'+esc(a.id)+'">Add-on · '+esc(a.name)+'</option>').join('');
- openInventoryView('<div class="modal-head"><h3>Recipes &amp; costing</h3><div class="msub">Set ingredient quantities per drink size or add-on. Costs are calculated from each ingredient’s latest purchase price and pack conversion.</div></div><div class="modal-body"><div class="recipe-browser"><aside class="recipe-browser-left"><div class="recipe-browser-head"><strong>Menu products</strong><input id="recipe-product-search" placeholder="Search products…" aria-label="Search products"><select id="recipe-category-filter"><option value="all">All categories</option></select></div><div class="recipe-product-list" id="recipe-product-list"></div></aside><section class="recipe-browser-right"><div class="recipe-detail-head" id="recipe-detail-head"><div class="recipe-empty">Select a product from the list to manage its recipe.</div></div><div class="recipe-detail-body"><div class="recipe-size-tabs" id="recipe-size-tabs"></div><select id="recipe-target" style="display:none" aria-hidden="true">'+targets+'</select><div id="recipe-editor"><div class="recipe-empty">Choose a product or add-on to begin.</div></div><div class="inv-sub" style="margin-top:12px">Walk-in profit = menu price − recipe cost. GrabFood profit = GrabFood price − 25% commission − recipe cost. Ingredient prices come from the latest purchase price and pack conversion.</div></div></section></div><div class="inv-sub" style="margin-top:12px">Walk-in profit = menu price − recipe cost. GrabFood profit = GrabFood price − 25% commission − recipe cost. Enter or update each ingredient’s latest purchase price in its ingredient details. Stock In remains quantity-only; enter actual purchases separately in OPEX.</div></div><div class="modal-foot"><button class="btn btn-primary" id="recipe-save">Save recipe</button></div>', 'recipes');
+ openInventoryView('<div class="modal-head"><h3>Recipes &amp; costing</h3><div class="msub">Set ingredient quantities per drink size or add-on. Costs are calculated from each ingredient’s latest purchase price and pack conversion.</div></div><div class="modal-body"><div class="recipe-browser"><aside class="recipe-browser-left"><div class="recipe-browser-head"><strong>Menu products</strong><input id="recipe-product-search" placeholder="Search products…" aria-label="Search products"><select id="recipe-category-filter"><option value="all">All categories</option></select></div><div class="recipe-product-list" id="recipe-product-list"></div></aside><section class="recipe-browser-right"><div class="recipe-detail-head" id="recipe-detail-head"><div class="recipe-empty">Select a product from the list to manage its recipe.</div></div><div class="recipe-detail-body"><div class="recipe-size-tabs" id="recipe-size-tabs"></div><select id="recipe-target" style="display:none" aria-hidden="true">'+targets+'</select><div id="recipe-editor"><div class="recipe-empty">Choose a product or add-on to begin.</div></div></div></section></div></div><div class="modal-foot"><button class="btn btn-primary" id="recipe-save">Save recipe</button></div>', 'recipes');
  const items=rows.filter(x=>x.active);
  const editor=$('recipe-editor'),productList=$('recipe-product-list'),searchBox=$('recipe-product-search'),categoryFilter=$('recipe-category-filter'),sizeTabs=$('recipe-size-tabs'),detailHead=$('recipe-detail-head');
  let selectedBrowserKey='';
@@ -303,10 +375,10 @@ async function recipeModal(){
  searchBox.oninput=renderBrowserList;categoryFilter.onchange=renderBrowserList;
  renderBrowserList();
  const money=n=>'₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
- editor.innerHTML='<div id="recipe-lines"></div><button type="button" class="inv-btn secondary" id="recipe-add-line">+ Add ingredient</button><div id="recipe-cost-summary" style="margin-top:16px"></div>';
+ editor.innerHTML='<div class="recipe-editor-toolbar"><div><strong>Ingredients per serving</strong><p>Choose each ingredient and enter the amount used for one drink.</p></div><button type="button" class="inv-btn secondary" id="recipe-add-line">+ Add ingredient</button></div><div id="recipe-lines"></div><div id="recipe-cost-summary"></div>';
  const recipeLinesHost=$('recipe-lines'),summary=$('recipe-cost-summary');
  const ingredientCost=item=>{const price=item?.purchase_price,conversion=Number(item?.purchase_conversion_to_base??item?.purchase_conversion??item?.conversion_to_base);return price!==null&&price!==undefined&&price!==''&&Number.isFinite(Number(price))&&Number(price)>=0&&Number.isFinite(conversion)&&conversion>0?Number(price)/conversion:null};
- const addLine=(id='',qty='',optional=false)=>{const row=document.createElement('div');row.className='inv-modal-grid recipe-row';row.style.cssText='gap:7px;margin:8px 0;align-items:end';row.innerHTML='<div><label>Ingredient</label><select class="recipe-item"><option value="">Choose ingredient…</option>'+items.map(x=>'<option value="'+x.id+'" '+(x.id===id?'selected':'')+'>'+esc(x.name)+' ('+unitLabel(consumptionUnit(x))+')</option>').join('')+'</select></div><div><label>Qty / unit</label><input class="recipe-qty" type="number" min="0.001" step="0.001" value="'+esc(qty)+'"></div><div><label>Optional?</label><select class="recipe-optional"><option value="false" '+(!optional?'selected':'')+'>No</option><option value="true" '+(optional?'selected':'')+'>Yes</option></select></div><div class="recipe-line-cost inv-sub">Cost: —</div><button type="button" class="inv-btn secondary recipe-remove">×</button>';row.querySelector('.recipe-remove').onclick=()=>{row.remove();renderCosting()};row.querySelectorAll('select,input').forEach(el=>el.addEventListener('input',renderCosting));recipeLinesHost.appendChild(row);renderCosting()};
+ const addLine=(id='',qty='',optional=false)=>{const row=document.createElement('div');row.className='inv-modal-grid recipe-row';row.style.cssText='';row.innerHTML='<div><label>Ingredient</label><select class="recipe-item"><option value="">Choose ingredient…</option>'+items.map(x=>'<option value="'+x.id+'" '+(x.id===id?'selected':'')+'>'+esc(x.name)+' ('+unitLabel(consumptionUnit(x))+')</option>').join('')+'</select></div><div><label>Qty / unit</label><input class="recipe-qty" type="number" min="0.001" step="0.001" value="'+esc(qty)+'"></div><div><label>Optional?</label><select class="recipe-optional"><option value="false" '+(!optional?'selected':'')+'>No</option><option value="true" '+(optional?'selected':'')+'>Yes</option></select></div><div class="recipe-line-cost inv-sub">Cost: —</div><button type="button" class="inv-btn secondary recipe-remove">×</button>';row.querySelector('.recipe-remove').onclick=()=>{row.remove();renderCosting()};row.querySelectorAll('select,input').forEach(el=>el.addEventListener('input',renderCosting));recipeLinesHost.appendChild(row);renderCosting()};
  const selectedTarget=()=>{const v=$('recipe-target').value;if(!v)return null;const parts=v.split('|'),addon=v.startsWith('addon|');if(addon){const a=addons.find(x=>x.id===parts[1]);return a?{addon:true,item:a,name:a.name,walkPrice:Number(a.price)||0,grabPrice:Number(a.grabPrice??a.price)||0}:null}const product=products.find(x=>x.id===parts[0]),size=parts.slice(1).join('|');return product?{addon:false,item:product,name:product.name+' · '+size,walkPrice:Number(product.sizes?.[size])||0,grabPrice:Number(product.grabPrices?.[size]??product.sizes?.[size])||0}:null};
  const renderCosting=()=>{
   let total=0,missing=[],lines=0,ingredientRows=[];
@@ -314,17 +386,17 @@ async function recipeModal(){
    const item=items.find(x=>x.id===row.querySelector('.recipe-item')?.value);
    const qty=Number(row.querySelector('.recipe-qty')?.value);
    const unit=ingredientCost(item),out=row.querySelector('.recipe-line-cost');
-   if(!item||!Number.isFinite(qty)||qty<=0){out.textContent='Cost: —';return}
+   if(!item||!Number.isFinite(qty)||qty<=0){out.textContent='Line cost: —';return}
    lines++;
    if(unit===null){
     missing.push(item.name);
     ingredientRows.push({name:item.name,qty,unit:consumptionUnit(item),unitCost:null,lineCost:null});
-    out.textContent='Cost: price not set';
+    out.textContent='Line cost: price not set';
     return;
    }
    const cost=unit*qty;total+=cost;
    ingredientRows.push({name:item.name,qty,unit:consumptionUnit(item),unitCost:unit,lineCost:cost});
-   out.textContent='Cost: '+money(cost)+' ('+money(unit)+' / '+unitLabel(consumptionUnit(item))+')';
+   out.textContent='Line cost: '+money(cost)+' ('+money(unit)+' / '+unitLabel(consumptionUnit(item))+')';
   });
   const t=selectedTarget();
   if(!t){summary.innerHTML='<div class="inv-sub">Choose a product to see its recipe cost and projected profit.</div>';return}
@@ -349,7 +421,7 @@ async function recipeModal(){
    '<section class="recipe-report-section"><div class="recipe-report-title"><strong>1. Ingredient cost breakdown</strong><span>Latest purchase prices · Per serving</span></div><div class="recipe-cost-total"><span>Total recipe cost</span><strong>'+money(total)+(incomplete?'*':'')+'</strong></div>'+ingredientTable+'</section>'+
    '<section class="recipe-report-section"><div class="recipe-report-title"><strong>2. Selling price &amp; projected profit</strong><span>Side-by-side channel comparison</span></div>'+comparison+'</section>'+
    (incomplete?'<div class="recipe-profit-missing"><strong>Action needed:</strong> Add a latest purchase price for '+missing.map(esc).join(', ')+'. Projected profit is hidden until every recipe ingredient has a valid price. The recipe cost shown is a partial total.</div>':'')+
-   '<div class="recipe-profit-foot">Projected profit subtracts ingredient cost only. It does not include packaging, labor, rent, utilities, or other operating expenses. GrabFood profit uses the listed price less a 25% commission.</div></section>';
+   '<div class="recipe-profit-foot">Projected profit subtracts recipe ingredient cost only; packaging, labor, rent, utilities, and other operating expenses are not included. GrabFood commission is estimated at 25% of the listed price.</div></section>';
  };
  const loadTarget=async()=>{recipeLinesHost.innerHTML='';summary.innerHTML='';const v=$('recipe-target').value;if(!v){renderCosting();return}const addon=v.startsWith('addon|'),parts=v.split('|');let q=supabaseClient.from('inventory_recipe_lines').select('item_id,quantity_per_unit,optional').eq('recipe_type',addon?'addon':'product');q=addon?q.eq('addon_id',parts[1]):q.eq('product_id',parts[0]).eq('product_size',parts.slice(1).join('|'));const r=await q;if(r.error){toast(r.error.message);return}(r.data||[]).forEach(x=>addLine(x.item_id,x.quantity_per_unit,x.optional));renderCosting()};
  $('recipe-target').onchange=()=>{updateDetail();loadTarget()};$('recipe-add-line').onclick=()=>addLine();
