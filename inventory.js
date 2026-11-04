@@ -23,7 +23,7 @@ function inventoryTabBar(active){
 function bindInventoryTabs(){root().querySelectorAll('[data-inv-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.invTab;if(t==='overview')render();if(t==='movement')historyModal();if(t==='counts')stockCountHistoryModal();if(t==='recipes'&&isSuperuser())recipeModal();if(t==='categories'&&isSuperuser())categoryModal()})}
 function openInventoryView(content,active='movement'){
  const host=root();if(!host)return;
- const heading=(content.match(/<h3>(.*?)<\\/h3>/i)||[])[1]||'Inventory workspace';
+ const heading=(content.match(/<h3>(.*?)<\/h3>/i)||[])[1]||'Inventory workspace';
  host.innerHTML='<div class="inv-wrap inv-workspace"><div class="inv-workspace-top"><div class="inv-crumb">INVENTORY</div><div class="inv-page-heading">'+heading+'</div></div>'+inventoryTabBar(active)+'<div class="inv-page-content">'+content+'</div></div>';
  bindInventoryTabs();
 }
