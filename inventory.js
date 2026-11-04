@@ -423,6 +423,54 @@ function recipeCostingViewCss(){
   .recipe-report-title{margin-bottom:16px!important}
   .recipe-cost-total strong{font-size:22px!important}
  }
+ /* Selling price & projected profit: deliberate financial comparison table */
+ .recipe-profit-comparison{
+  width:100%!important;min-width:0!important;table-layout:fixed!important;
+  border-collapse:separate!important;border-spacing:0!important;
+  font-size:13px!important;color:#3b4037!important;
+ }
+ .recipe-profit-comparison thead th{
+  padding:15px 18px!important;background:#f5f7f2!important;
+  border-bottom:1px solid #e4e9df!important;text-align:right!important;
+  font-size:11px!important;font-weight:800!important;letter-spacing:.045em!important;
+  text-transform:uppercase!important;white-space:normal!important;
+ }
+ .recipe-profit-comparison thead th:first-child{
+  width:46%!important;text-align:left!important;color:#747b6d!important;
+ }
+ .recipe-profit-comparison thead th.walk-head{background:#f0f5ec!important;color:#526b43!important}
+ .recipe-profit-comparison thead th.grab-head{background:#fbf4e9!important;color:#94652c!important}
+ .recipe-profit-comparison tbody th{
+  width:46%!important;padding:14px 18px!important;text-align:left!important;
+  background:#fff!important;color:#646b5e!important;font-weight:600!important;
+  border-bottom:1px solid #edf0e9!important;line-height:1.4!important;
+ }
+ .recipe-profit-comparison tbody td{
+  padding:14px 18px!important;text-align:right!important;white-space:nowrap!important;
+  font-variant-numeric:tabular-nums!important;color:#343a30!important;
+  border-bottom:1px solid #edf0e9!important;background:#fff!important;
+ }
+ .recipe-profit-comparison tbody tr:nth-child(even):not(.profit-row) th,
+ .recipe-profit-comparison tbody tr:nth-child(even):not(.profit-row) td{background:#fafbf9!important}
+ .recipe-profit-comparison tbody tr:last-child th,
+ .recipe-profit-comparison tbody tr:last-child td{border-bottom:0!important}
+ .recipe-profit-comparison .profit-row th,
+ .recipe-profit-comparison .profit-row td{
+  padding-top:17px!important;padding-bottom:17px!important;
+  background:#edf3e9!important;color:#34442c!important;
+  border-top:1px solid #dfe7d8!important;border-bottom:0!important;
+ }
+ .recipe-profit-comparison .profit-row th{font-weight:850!important}
+ .recipe-profit-comparison .profit-row td{font-size:16px!important;font-weight:850!important;letter-spacing:-.02em!important}
+ .recipe-profit-comparison .profit-row td.incomplete-value{font-size:13px!important;color:#9a6b2b!important}
+ @media(max-width:560px){
+  .recipe-profit-comparison{font-size:11px!important}
+  .recipe-profit-comparison thead th{padding:12px 9px!important;font-size:9px!important}
+  .recipe-profit-comparison thead th:first-child,.recipe-profit-comparison tbody th{width:42%!important}
+  .recipe-profit-comparison tbody th{padding:12px 9px!important;font-size:10px!important}
+  .recipe-profit-comparison tbody td{padding:12px 8px!important;font-size:11px!important}
+  .recipe-profit-comparison .profit-row td{font-size:13px!important}
+ } }
 
  `;
  document.head.appendChild(st);
