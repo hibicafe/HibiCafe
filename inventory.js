@@ -16,11 +16,16 @@ const formatBalance=item=>fmt(item.quantity_on_hand/purchaseFactor(item))+' '+di
 const standardFactor=(purchase,consumption)=>{const p=purchaseOptions.find(x=>x[0]===purchase),c=consumptionOptions.find(x=>x[0]===consumption);if(!p||!c||p[2]!==c[2]||p[3]===null)return null;const base={mass:{g:1,kg:1000},volume:{ml:1,L:1000},count:{pc:1}}[p[2]];return base[purchase]/base[consumption]};
 let rows=[],cats=[],filter='all',query='',stockFilter='all';
 function root(){return $('inventory-content');}
-function openInventoryView(content){
+function inventoryTabBar(active){
+ const tabs=[['overview','Overview'],['movement','Movement history'],['counts','Stock count history']];if(isSuperuser())tabs.push(['recipes','Recipes & costing'],['categories','Categories']);
+ return '<nav class="inv-tabs" aria-label="Inventory sections">'+tabs.map(([id,label])=>'<button type="button" class="inv-tab '+(active===id?'active':'')+'" data-inv-tab="'+id+'">'+label+'</button>').join('')+'</nav>';
+}
+function bindInventoryTabs(){root().querySelectorAll('[data-inv-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.invTab;if(t==='overview')render();if(t==='movement')historyModal();if(t==='counts')stockCountHistoryModal();if(t==='recipes'&&isSuperuser())recipeModal();if(t==='categories'&&isSuperuser())categoryModal()})}
+function openInventoryView(content,active='movement'){
  const host=root();if(!host)return;
- const heading=(content.match(/<h3>(.*?)<\/h3>/i)||[])[1]||'Inventory workspace';
- host.innerHTML='<div class="inv-wrap"><div class="inv-page-top"><div><div class="inv-crumb">INVENTORY WORKSPACE</div><div class="inv-page-heading">'+heading+'</div></div><button type="button" class="inv-btn secondary" id="inv-back">← Inventory overview</button></div><div class="inv-page-content">'+content+'</div></div>';
- $('inv-back').onclick=()=>render();
+ const heading=(content.match(/<h3>(.*?)<\\/h3>/i)||[])[1]||'Inventory workspace';
+ host.innerHTML='<div class="inv-wrap inv-workspace"><div class="inv-workspace-top"><div class="inv-crumb">INVENTORY</div><div class="inv-page-heading">'+heading+'</div></div>'+inventoryTabBar(active)+'<div class="inv-page-content">'+content+'</div></div>';
+ bindInventoryTabs();
 }
 function closeInventoryView(){render()}
 function css(){if($('inventory-css'))return;const st=document.createElement('style');st.id='inventory-css';st.textContent=`#page-inventory{background:#fff}.inv-wrap{width:100%;padding:26px 30px;overflow:auto;background:#fff;color:#292929}.inv-head{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.inv-head h1{font-size:26px;margin:0}.inv-sub{color:#777;font-size:13px;margin-top:5px}.inv-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}.inv-stat{border:1px solid #e8e8e4;border-radius:12px;padding:16px}.inv-stat strong{display:block;font-size:24px}.inv-stat span{font-size:12px;color:#777}.inv-tools{display:flex;gap:9px;flex-wrap:wrap;margin:16px 0}.inv-tools input,.inv-tools select{border:1px solid #ddd;border-radius:9px;padding:10px 12px;background:white}.inv-table{width:100%;border-collapse:collapse;font-size:13px}.inv-table th,.inv-table td{text-align:left;padding:13px 10px;border-bottom:1px solid #eee}.inv-table th{color:#777;font-weight:600;background:#fafaf8}.inv-pill{display:inline-block;border-radius:20px;padding:4px 9px;background:#edf6ef;color:#28633a;font-size:11px}.inv-pill.low{background:#fff3df;color:#8a5a11}.inv-empty{padding:35px;text-align:center;color:#888;border:1px dashed #ddd;border-radius:12px}.inv-btn{border:0;border-radius:9px;padding:10px 14px;background:#252525;color:white;font-weight:600;cursor:pointer}.inv-btn.secondary{background:#f1f1ee;color:#333}.inv-btn:disabled{opacity:.5}.inv-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.inv-modal-grid label{font-size:12px;color:#666;display:block;margin-bottom:5px}.inv-modal-grid input,.inv-modal-grid select,.inv-modal-grid textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff}.inv-modal-grid .wide{grid-column:1/-1}.inv-page-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid #e9e9e5}.inv-crumb{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#9a866e}.inv-page-heading{font-size:20px;font-weight:750;margin-top:4px;color:#292929}.inv-page-content{max-width:1500px;margin:0 auto}.inv-page-content .modal-head{margin:0 0 18px;padding:0}.inv-page-content .modal-head h3{font-size:23px;margin:0 0 6px;color:#292929}.inv-page-content .msub{font-size:13px;color:#777;line-height:1.5}.inv-page-content .modal-body{padding:0;margin:0 0 22px;max-height:none;overflow:visible}.inv-page-content .modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:16px 0 0;border-top:1px solid #eee;position:sticky;bottom:0;background:#fff}.inv-page-content .inv-modal-grid{max-width:1050px}.inv-page-content .inv-table{min-width:760px}.inv-page-content .inv-table th{position:sticky;top:0;z-index:1}.inv-page-content .inv-empty{max-width:100%}.inv-page-content input,.inv-page-content select,.inv-page-content textarea{font:inherit}
@@ -126,10 +131,7 @@ function render(){
  const low=rows.filter(isLow).length;
  const above=rows.length-low;
  host.innerHTML='<div class="inv-wrap inv-overview">'+
-  '<div class="inv-overview-head"><div class="inv-title"><h1>Inventory</h1><p>Monitor ingredient levels, record deliveries and manage stock activity.</p></div>'+
-  '<div class="inv-actions"><button class="inv-btn secondary" id="inv-history">Movement history</button><button class="inv-btn secondary" id="inv-count-history">Stock count history</button>'+
-  (isSuperuser()?'<button class="inv-btn secondary" id="inv-recipes">Recipes &amp; costing</button><button class="inv-btn secondary" id="inv-category">Manage categories</button><button class="inv-btn" id="inv-add">+ Add ingredient</button>':'')+
-  '</div></div>'+
+  '<div class="inv-overview-head"><div class="inv-title"><h1>Inventory</h1><p>Monitor ingredient levels, record deliveries and manage stock activity.</p></div><button class="inv-btn" id="inv-add">+ Add ingredient</button></div>'+inventoryTabBar('overview')+
   '<div class="inv-stats"><div class="inv-stat"><strong>'+rows.length+'</strong><span>ACTIVE INGREDIENTS</span></div><div class="inv-stat"><strong>'+above+'</strong><span>ABOVE MINIMUM STOCK</span></div><div class="inv-stat"><strong>'+low+'</strong><span>AT OR BELOW MINIMUM</span></div></div>'+
   '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
   '<section class="inv-table-panel"><div class="inv-table-heading"><strong>Ingredient list</strong><span>Showing '+shown.length+' of '+rows.length+' ingredients</span></div>'+
@@ -144,8 +146,8 @@ function render(){
  $('inv-refresh').onclick=()=>load().catch(err=>toast(err.message));
  $('inv-add')?.addEventListener('click',()=>itemModal());
  $('inv-category')?.addEventListener('click',()=>categoryModal());
- $('inv-history').onclick=historyModal;$('inv-count-history').onclick=stockCountHistoryModal;
- $('inv-recipes')?.addEventListener('click',()=>recipeModal());
+ 
+ 
  host.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>movementModal(rows.find(x=>x.id===b.dataset.move)));
  host.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>itemModal(rows.find(x=>x.id===b.dataset.edit)));
 }
