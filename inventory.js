@@ -301,6 +301,10 @@ function recipeCostingViewCss(){
  .recipe-detail-body{background:#fff}
  .recipe-size-tab{border:1px solid #aeb8a4;border-radius:5px;color:#35412d;background:#fff;padding:9px 13px}
  .recipe-size-tab.active{background:#39432f;border-color:#39432f;color:#fff}
+ .recipe-editor-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:13px 14px;background:#f5f6f3;border:1px solid #dfe3da;border-radius:6px}
+ .recipe-editor-toolbar strong{display:block;color:#293123;font-size:13px;font-weight:800}
+ .recipe-editor-toolbar p{margin:4px 0 0;color:#596253;font-size:11px;line-height:1.45}
+ .recipe-editor-toolbar #recipe-add-line{margin:0;white-space:nowrap}
  #recipe-lines{display:grid;gap:9px}
  .recipe-detail-body .recipe-row{display:grid!important;grid-template-columns:minmax(190px,1.5fr) minmax(110px,.55fr) minmax(105px,.55fr) minmax(170px,.9fr) 42px!important;gap:10px!important;align-items:end!important;margin:0!important;padding:12px;background:#f7f8f5;border:1px solid #dfe3da;border-radius:6px}
  .recipe-detail-body .recipe-row label{display:block;margin:0 0 6px;color:#3b4435;font-size:11px;font-weight:750}
