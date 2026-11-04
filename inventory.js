@@ -355,10 +355,80 @@ function recipeCostingViewCss(){
  .recipe-profit-foot{padding:13px 22px;background:#fafbf9;color:#7e8578;font-size:10px;line-height:1.6}
  .recipe-profit-missing{margin:14px 22px 18px;padding:12px 14px;border-radius:8px;background:#fff5e7;color:#8b5d20;font-size:11px;line-height:1.55}
  @media(max-width:650px){.recipe-profit-head{padding:16px}.recipe-report-section{padding:15px 13px}.recipe-profit-head h4{font-size:17px}.recipe-cost-total strong{font-size:20px}.recipe-profit-foot{padding:12px 14px}.recipe-profit-missing{margin:12px 13px 15px}}
+ /* Recipe workspace: single responsive design system */
+ .recipe-browser{grid-template-columns:minmax(280px,340px) minmax(0,1fr)!important;gap:18px!important}
+ .recipe-browser-left,.recipe-browser-right{border:1px solid #e2e8de!important;border-radius:14px!important;box-shadow:0 4px 16px rgba(35,48,28,.05)!important}
+ .recipe-browser-head{padding:17px!important;background:#f8faf6!important;border-bottom:1px solid #e8ede5!important}
+ .recipe-browser-head strong{font-size:13px!important;font-weight:800!important}
+ .recipe-browser-head input,.recipe-browser-head select{min-height:42px!important;border:1px solid #dce3d7!important;border-radius:9px!important}
+ .recipe-product-list{padding:9px!important}
+ .recipe-product-card{border-radius:10px!important;padding:11px!important}
+ .recipe-product-card.active{background:#eff4ea!important;border-color:#cbd7c0!important;box-shadow:inset 3px 0 #536844!important}
+ .recipe-detail-head{padding:20px 22px!important;border-bottom:1px solid #edf0eb!important}
+ .recipe-detail-head h4{font-size:20px!important;line-height:1.3!important}
+ .recipe-detail-body{padding:22px!important}
+ .recipe-size-tabs{gap:8px!important;margin:0 0 20px!important}
+ .recipe-size-tab{min-height:38px!important;border-radius:9px!important}
+ .recipe-editor-toolbar{margin:0 0 16px!important;padding:16px 18px!important;background:#f7f9f5!important;border:1px solid #e5eae1!important;border-radius:11px!important}
+ .recipe-editor-toolbar p{margin:5px 0 0!important;line-height:1.5!important}
+ #recipe-add-line{min-height:40px!important;margin:0!important;border:1px solid #cbd6c2!important;border-radius:9px!important;background:#fff!important;color:#3c4b32!important;font-weight:750!important}
+ #recipe-lines{display:grid!important;gap:10px!important}
+ .recipe-detail-body .recipe-row{position:relative!important;display:grid!important;grid-template-columns:minmax(170px,1.4fr) minmax(95px,.55fr) minmax(100px,.6fr) minmax(145px,.9fr)!important;gap:12px!important;align-items:end!important;margin:0!important;padding:15px 60px 15px 15px!important;border:1px solid #e3e8df!important;border-radius:11px!important;background:#fff!important}
+ .recipe-detail-body .recipe-row>div{min-width:0!important}
+ .recipe-detail-body .recipe-row label{display:block!important;margin:0 0 7px!important;color:#687260!important;font-size:10px!important;font-weight:800!important;letter-spacing:.05em!important;text-transform:uppercase!important}
+ .recipe-detail-body .recipe-row input,.recipe-detail-body .recipe-row select{width:100%!important;min-width:0!important;min-height:43px!important;box-sizing:border-box!important;padding:10px 11px!important;border:1px solid #dce3d7!important;border-radius:8px!important;background:#fff!important;font:inherit!important;font-size:13px!important}
+ .recipe-detail-body .recipe-row .recipe-line-cost{align-self:center!important;min-width:0!important;color:#47533d!important;font-size:12px!important;font-weight:750!important;line-height:1.5!important;overflow-wrap:anywhere}
+ .recipe-detail-body .recipe-row .recipe-remove{position:absolute!important;top:13px!important;right:13px!important;display:grid!important;place-items:center!important;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;border:1px solid #efd8d4!important;border-radius:9px!important;background:#fff8f7!important;color:#a34e43!important;font-size:20px!important;line-height:1!important}
+ #recipe-cost-summary{margin-top:26px!important}
+ .recipe-profit-wrap{margin:0!important;border:1px solid #e0e6dc!important;border-radius:14px!important;box-shadow:0 4px 16px rgba(35,48,28,.05)!important}
+ .recipe-profit-head{align-items:center!important;padding:21px 24px!important;background:#f7f9f5!important;border-bottom:1px solid #e7ece3!important}
+ .recipe-profit-head h4{font-size:19px!important;line-height:1.3!important}
+ .recipe-profit-head p{margin:6px 0 0!important}
+ .recipe-profit-status{border-radius:999px!important;white-space:nowrap!important}
+ .recipe-report-section{padding:24px!important;border-bottom:1px solid #edf0ea!important}
+ .recipe-report-title{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:6px!important;margin:0 0 18px!important}
+ .recipe-report-title strong{display:block!important;margin:0!important;font-size:15px!important;line-height:1.4!important;font-weight:800!important;color:#303b29!important}
+ .recipe-report-title span{display:block!important;margin:0!important;font-size:11px!important;line-height:1.5!important;color:#858d7e!important}
+ .recipe-cost-total{margin:0 0 18px!important;padding:16px 18px!important;border:1px solid #e1e8dc!important;border-left:4px solid #647b50!important;border-radius:10px!important;background:#f7f9f5!important}
+ .recipe-cost-total strong{font-size:25px!important}
+ .recipe-report-table-wrap{width:100%!important;overflow-x:auto!important;border:1px solid #e6ebe3!important;border-radius:10px!important}
+ .recipe-report-table th,.recipe-profit-comparison thead th{padding:12px 14px!important;background:#f4f7f1!important;color:#707b67!important}
+ .recipe-report-table td{padding:13px 14px!important}
+ .recipe-report-table tbody tr:nth-child(even) td{background:#fafbf9!important}
+ .recipe-profit-comparison .profit-row th,.recipe-profit-comparison .profit-row td{background:#edf3e9!important;color:#34442c!important}
+ .recipe-profit-foot{padding:16px 24px!important;background:#fafbf9!important;line-height:1.65!important}
+ .recipe-profit-missing{margin:0 24px 20px!important;padding:14px 16px!important;border-radius:9px!important;line-height:1.6!important}
+ @media(max-width:1050px){
+  .recipe-browser{grid-template-columns:minmax(240px,290px) minmax(0,1fr)!important;gap:14px!important}
+  .recipe-detail-body{padding:16px!important}
+  .recipe-detail-body .recipe-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .recipe-detail-body .recipe-row>div:first-child,.recipe-detail-body .recipe-row .recipe-line-cost{grid-column:1/-1!important}
+ }
+ @media(max-width:760px){
+  .recipe-browser{grid-template-columns:minmax(0,1fr)!important}
+  .recipe-product-list{max-height:300px!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .recipe-detail-body{padding:14px!important}
+  .recipe-detail-body .recipe-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;padding:13px 54px 13px 13px!important;gap:10px!important}
+  .recipe-detail-body .recipe-row>div:first-child,.recipe-detail-body .recipe-row .recipe-line-cost{grid-column:1/-1!important}
+  .recipe-detail-body .recipe-row .recipe-remove{top:11px!important;right:11px!important}
+  .recipe-report-section{padding:18px 15px!important}
+  .recipe-profit-head{padding:17px!important}
+  .recipe-profit-foot{padding:14px 17px!important}
+  .recipe-profit-missing{margin:0 15px 16px!important}
+ }
+ @media(max-width:480px){
+  .recipe-product-list{grid-template-columns:minmax(0,1fr)!important}
+  .recipe-editor-toolbar{display:flex!important;align-items:stretch!important;flex-direction:column!important}
+  .recipe-editor-toolbar #recipe-add-line{width:100%!important}
+  .recipe-report-title{margin-bottom:16px!important}
+  .recipe-cost-total strong{font-size:22px!important}
+ }
+
  `;
  document.head.appendChild(st);
 }
 async function recipeModal(){
+ css();recipeCostingViewCss();
  if(!isSuperuser()){toast('Only superusers can manage recipes.');return}
  const products=Array.isArray(MENU?.products)?MENU.products:[],addons=Array.isArray(ADDONS)?ADDONS:[];
  const targets='<option value="">Choose…</option>'+products.filter(p=>p.active!==false).flatMap(p=>Object.keys(p.sizes||{}).map(s=>'<option value="'+esc(p.id)+'|'+esc(s)+'">'+esc(p.name)+' · '+esc(s)+'</option>')).join('')+addons.filter(a=>a.active!==false).map(a=>'<option value="addon|'+esc(a.id)+'">Add-on · '+esc(a.name)+'</option>').join('');
