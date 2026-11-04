@@ -157,13 +157,14 @@ function render(){
   shown.map(x=>'<tr><td class="inv-ingredient-name">'+esc(x.name)+'</td><td>'+esc(cats.find(c=>c.id===x.category_id)?.name||'—')+'</td><td>'+formatBalance(x)+'</td><td>'+fmt(x.minimum_stock)+' '+unitLabel(purchaseUnit(x))+'</td><td class="inv-price">'+(x.purchase_price!=null?'₱'+Number(x.purchase_price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+' / '+unitLabel(purchaseUnit(x)):'<span class="inv-muted">Not set</span>')+'</td><td><span class="inv-pill '+(isLow(x)?'low':'')+'">'+(isLow(x)?'Low stock':'In stock')+'</span></td><td><div class="inv-row-actions"><button class="inv-btn secondary" data-move="'+x.id+'">Stock actions</button> '+(isSuperuser()?'<button class="inv-btn secondary" data-edit="'+x.id+'">Edit</button>':'')+'</div></td></tr>').join('')+
   '</tbody></table></div>':(normalizedQuery||filter!=='all'?'<div class="inv-empty">No ingredients match your search or selected category.</div>':'<div class="inv-empty">No ingredients found. Add your first ingredient to begin tracking stock.</div>'))+
   '</section></div>';
+ bindInventoryTabs();
  const search=$('inv-search');
  search.oninput=e=>{const value=e.target.value,start=e.target.selectionStart??value.length,end=e.target.selectionEnd??value.length;query=value;render();const next=$('inv-search');next.focus();next.setSelectionRange(start,end)};
  $('inv-filter').onchange=e=>{filter=e.target.value;render()};
  $('inv-stock-filter').onchange=e=>{stockFilter=e.target.value;render()};
  $('inv-refresh').onclick=()=>load().catch(err=>toast(err.message));
  $('inv-add')?.addEventListener('click',()=>itemModal());
- $('inv-category')?.addEventListener('click',()=>categoryModal());
+
  
  
  host.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>movementModal(rows.find(x=>x.id===b.dataset.move)));
