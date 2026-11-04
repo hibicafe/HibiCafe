@@ -14,7 +14,7 @@ const displayQty=(item,q)=>fmt(q/purchaseFactor(item));
 const displayUnit=item=>unitLabel(purchaseUnit(item));
 const formatBalance=item=>fmt(item.quantity_on_hand/purchaseFactor(item))+' '+displayUnit(item);
 const standardFactor=(purchase,consumption)=>{const p=purchaseOptions.find(x=>x[0]===purchase),c=consumptionOptions.find(x=>x[0]===consumption);if(!p||!c||p[2]!==c[2]||p[3]===null)return null;const base={mass:{g:1,kg:1000},volume:{ml:1,L:1000},count:{pc:1}}[p[2]];return base[purchase]/base[consumption]};
-let rows=[],cats=[],filter='all',query='';
+let rows=[],cats=[],filter='all',query='',stockFilter='all';
 function root(){return $('inventory-content');}
 function openInventoryView(content){
  const host=root();if(!host)return;
@@ -121,7 +121,7 @@ function inventoryPolishCss(){
 function render(){
  css();inventoryPolishCss();const host=root();if(!host)return;
  const normalizedQuery=query.trim().toLocaleLowerCase();
- const shown=rows.filter(x=>(filter==='all'||x.category_id===filter)&&x.name.toLocaleLowerCase().includes(normalizedQuery));
+ const shown=rows.filter(x=>(filter==='all'||x.category_id===filter)&&x.name.toLocaleLowerCase().includes(normalizedQuery)&&(stockFilter==='all'||(stockFilter==='low'?x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x):x.quantity_on_hand>Number(x.minimum_stock)*purchaseFactor(x))));
  const isLow=x=>x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x);
  const low=rows.filter(isLow).length;
  const above=rows.length-low;
@@ -131,7 +131,7 @@ function render(){
   (isSuperuser()?'<button class="inv-btn secondary" id="inv-recipes">Recipes &amp; costing</button><button class="inv-btn secondary" id="inv-category">Manage categories</button><button class="inv-btn" id="inv-add">+ Add ingredient</button>':'')+
   '</div></div>'+
   '<div class="inv-stats"><div class="inv-stat"><strong>'+rows.length+'</strong><span>ACTIVE INGREDIENTS</span></div><div class="inv-stat"><strong>'+above+'</strong><span>ABOVE MINIMUM STOCK</span></div><div class="inv-stat"><strong>'+low+'</strong><span>AT OR BELOW MINIMUM</span></div></div>'+
-  '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
+  '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
   '<section class="inv-table-panel"><div class="inv-table-heading"><strong>Ingredient list</strong><span>Showing '+shown.length+' of '+rows.length+' ingredients</span></div>'+
   (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th>Ingredient</th><th>Category</th><th>On hand</th><th>Minimum stock</th><th>Purchase price</th><th>Stock status</th><th>Actions</th></tr></thead><tbody>'+
   shown.map(x=>'<tr><td class="inv-ingredient-name">'+esc(x.name)+'</td><td>'+esc(cats.find(c=>c.id===x.category_id)?.name||'—')+'</td><td>'+formatBalance(x)+'</td><td>'+fmt(x.minimum_stock)+' '+unitLabel(purchaseUnit(x))+'</td><td class="inv-price">'+(x.purchase_price!=null?'₱'+Number(x.purchase_price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+' / '+unitLabel(purchaseUnit(x)):'<span class="inv-muted">Not set</span>')+'</td><td><span class="inv-pill '+(isLow(x)?'low':'')+'">'+(isLow(x)?'Low stock':'In stock')+'</span></td><td><div class="inv-row-actions"><button class="inv-btn secondary" data-move="'+x.id+'">Stock actions</button> '+(isSuperuser()?'<button class="inv-btn secondary" data-edit="'+x.id+'">Edit</button>':'')+'</div></td></tr>').join('')+
@@ -140,6 +140,7 @@ function render(){
  const search=$('inv-search');
  search.oninput=e=>{const value=e.target.value,start=e.target.selectionStart??value.length,end=e.target.selectionEnd??value.length;query=value;render();const next=$('inv-search');next.focus();next.setSelectionRange(start,end)};
  $('inv-filter').onchange=e=>{filter=e.target.value;render()};
+ $('inv-stock-filter').onchange=e=>{stockFilter=e.target.value;render()};
  $('inv-refresh').onclick=()=>load().catch(err=>toast(err.message));
  $('inv-add')?.addEventListener('click',()=>itemModal());
  $('inv-category')?.addEventListener('click',()=>categoryModal());
