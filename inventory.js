@@ -159,7 +159,6 @@ async function ingredientWorkbook(template=false){
  lists.state='veryHidden';
  const addValidations=()=>{for(let n=2;n<=500;n++){ws.getCell(n,3).dataValidation={type:'list',allowBlank:false,formulae:['=CategoryOptions'],showErrorMessage:true,errorTitle:'Choose a valid category',error:'Select a category from the dropdown.'};ws.getCell(n,4).dataValidation={type:'list',allowBlank:false,formulae:['=ConsumptionUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a consumption unit from the dropdown.'};ws.getCell(n,5).dataValidation={type:'list',allowBlank:false,formulae:['=PurchaseUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a purchase unit from the dropdown.'};ws.getCell(n,6).dataValidation={type:'decimal',operator:'greaterThan',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter a number greater than zero.'};ws.getCell(n,7).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter zero or a positive number.'};ws.getCell(n,8).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:true,showErrorMessage:true,error:'Enter a valid non-negative price.'};ws.getCell(n,9).dataValidation={type:'list',formulae:['=ActiveOptions'],allowBlank:true,showErrorMessage:true,error:'Choose Yes or No.'}}};
  ws.addRow(headers);
- addValidations();
  ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'K1'};
  ws.columns=[{width:38},{width:28},{width:22},{width:20},{width:18},{width:28},{width:29},{width:38},{width:12},{width:26},{width:25}];
  const head=ws.getRow(1);head.height=30;head.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF38422C'}};c.alignment={vertical:'middle',wrapText:true}});
@@ -187,6 +186,9 @@ async function ingredientWorkbook(template=false){
   (r.data||[]).forEach(x=>ws.addRow([x.id,x.name,categoryMap.get(x.category_id)||'',x.consumption_unit||x.base_unit||'g',x.purchase_unit||x.stock_unit||x.consumption_unit||'g',Number(x.purchase_conversion_to_base??x.conversion_to_base??1),Number(x.minimum_stock)||0,x.purchase_price==null?'':Number(x.purchase_price),x.active!==false?'Yes':'No',x.supplier||'',balanceMap.get(x.id)||0]));
   ws.eachRow((row,n)=>{if(n>1){row.getCell(11).protection={locked:true};row.getCell(11).font={color:{argb:'FF888888'},italic:true};row.getCell(1).font={color:{argb:'FF777777'}}}});
  }
+ // Add dropdown validation only after data rows; otherwise ExcelJS pre-creates
+ // rows 2–500 and appends exported ingredients after the validation range.
+ addValidations();
  try{
   const buffer=await wb.xlsx.writeBuffer();
   if(!buffer||!buffer.byteLength)throw new Error('The Excel workbook was generated empty.');
