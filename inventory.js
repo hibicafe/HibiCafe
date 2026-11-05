@@ -186,7 +186,27 @@ async function ingredientWorkbook(template=false){
   (r.data||[]).forEach(x=>ws.addRow([x.id,x.name,categoryMap.get(x.category_id)||'',x.consumption_unit||x.base_unit||'g',x.purchase_unit||x.stock_unit||x.consumption_unit||'g',Number(x.purchase_conversion_to_base??x.conversion_to_base??1),Number(x.minimum_stock)||0,x.purchase_price==null?'':Number(x.purchase_price),x.active!==false?'Yes':'No',x.supplier||'',balanceMap.get(x.id)||0]));
   ws.eachRow((row,n)=>{if(n>1){row.getCell(11).protection={locked:true};row.getCell(11).font={color:{argb:'FF888888'},italic:true};row.getCell(1).font={color:{argb:'FF777777'}}}});
  }
- const buffer=await wb.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=template?'HibiCafe_Ingredient_Import_Template.xlsx':'HibiCafe_Ingredients_Export.xlsx';a.click();URL.revokeObjectURL(url);toast(template?'Import template downloaded.':'Ingredient export downloaded.');
+ try{
+  const buffer=await wb.xlsx.writeBuffer();
+  if(!buffer||!buffer.byteLength)throw new Error('The Excel workbook was generated empty.');
+  const bytes=new Uint8Array(buffer);
+  if(bytes[0]!==0x50||bytes[1]!==0x4b)throw new Error('The generated workbook is not a valid .xlsx file.');
+  const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=template?'HibiCafe_Ingredient_Import_Template.xlsx':'HibiCafe_Ingredients_Export.xlsx';
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Keep the object URL alive long enough for the browser to start the download.
+  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
+  toast(template?'Import template downloaded.':'Ingredient export downloaded.');
+ }catch(error){
+  console.error('Ingredient workbook generation failed:',error);
+  toast('Could not generate Excel file: '+(error?.message||'Unknown error'));
+ }
 }
 function openIngredientImport(){
  if(!isSuperuser()){toast('Only superusers can import ingredients.');return}
