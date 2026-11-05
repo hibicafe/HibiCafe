@@ -164,7 +164,7 @@ async function ingredientWorkbook(template=false){
   ws.addRow(['Leave Latest Purchase Price blank if not set. Minimum Stock can be 0.']);
   ws.addRow(['Import validates all rows first and skips rows with errors.']);
  }else{
-  const r=await supabaseClient.from('inventory_items').select('id,name,category_id,consumption_unit,base_unit,purchase_unit,stock_unit,purchase_conversion_to_base,conversion_to_base,minimum_stock,purchase_price,active').order('name');
+  const r=await supabaseClient.from('inventory_items').select('id,name,category_id,consumption_unit,base_unit,purchase_unit,stock_unit,purchase_conversion_to_base,conversion_to_base,minimum_stock,purchase_price,active').eq('active',true).order('name');
   if(r.error){toast('Could not export ingredients: '+r.error.message);return}
   const categoryResult=await supabaseClient.from('inventory_categories').select('id,name');
   if(categoryResult.error){toast('Could not load ingredient categories: '+categoryResult.error.message);return}
