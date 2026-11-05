@@ -159,7 +159,6 @@ async function ingredientWorkbook(template=false){
  lists.state='veryHidden';
  const addValidations=()=>{for(let n=2;n<=500;n++){ws.getCell(n,3).dataValidation={type:'list',allowBlank:false,formulae:['=CategoryOptions'],showErrorMessage:true,errorTitle:'Choose a valid category',error:'Select a category from the dropdown.'};ws.getCell(n,4).dataValidation={type:'list',allowBlank:false,formulae:['=ConsumptionUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a consumption unit from the dropdown.'};ws.getCell(n,5).dataValidation={type:'list',allowBlank:false,formulae:['=PurchaseUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a purchase unit from the dropdown.'};ws.getCell(n,6).dataValidation={type:'decimal',operator:'greaterThan',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter a number greater than zero.'};ws.getCell(n,7).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter zero or a positive number.'};ws.getCell(n,8).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:true,showErrorMessage:true,error:'Enter a valid non-negative price.'};ws.getCell(n,9).dataValidation={type:'list',formulae:['=ActiveOptions'],allowBlank:true,showErrorMessage:true,error:'Choose Yes or No.'}}};
  ws.addRow(headers);
- addValidations();
  ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'K1'};
  ws.columns=[{width:38},{width:28},{width:22},{width:20},{width:18},{width:28},{width:29},{width:38},{width:12},{width:26},{width:25}];
  const head=ws.getRow(1);head.height=30;head.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF38422C'}};c.alignment={vertical:'middle',wrapText:true}});
@@ -187,6 +186,9 @@ async function ingredientWorkbook(template=false){
   (r.data||[]).forEach(x=>ws.addRow([x.id,x.name,categoryMap.get(x.category_id)||'',x.consumption_unit||x.base_unit||'g',x.purchase_unit||x.stock_unit||x.consumption_unit||'g',Number(x.purchase_conversion_to_base??x.conversion_to_base??1),Number(x.minimum_stock)||0,x.purchase_price==null?'':Number(x.purchase_price),x.active!==false?'Yes':'No',x.supplier||'',balanceMap.get(x.id)||0]));
   ws.eachRow((row,n)=>{if(n>1){row.getCell(11).protection={locked:true};row.getCell(11).font={color:{argb:'FF888888'},italic:true};row.getCell(1).font={color:{argb:'FF777777'}}}});
  }
+ // Add dropdown validation only after data rows; otherwise ExcelJS pre-creates
+ // rows 2–500 and appends exported ingredients after the validation range.
+ addValidations();
  try{
   const buffer=await wb.xlsx.writeBuffer();
   if(!buffer||!buffer.byteLength)throw new Error('The Excel workbook was generated empty.');
@@ -278,13 +280,24 @@ function openIngredientImport(){
  };
 }
 
+function sortHeader(column,label){return '<button type="button" class="inv-sort-head" data-sort-column="'+column+'">'+label+' <span aria-hidden="true">'+(sortColumn===column?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button>'}
 function render(){
  css();inventoryPolishCss();const host=root();if(!host)return;
  const normalizedQuery=query.trim().toLocaleLowerCase();
  const filtered=rows.filter(x=>(filter==='all'||x.category_id===filter)&&(x.name+' '+(x.supplier||'')).toLocaleLowerCase().includes(normalizedQuery)&&(stockFilter==='all'||(stockFilter==='low'?x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x):x.quantity_on_hand>Number(x.minimum_stock)*purchaseFactor(x))));
  const shown=[...filtered].sort((a,b)=>{
-  const compare=(left,right)=>String(left??'').localeCompare(String(right??''),undefined,{numeric:true,sensitivity:'base'});
-  const result=sortColumn==='supplier'?compare(a.supplier||'',b.supplier||''):compare(a.name,b.name);
+  const compare=(left,right)=>{
+   if(typeof left==='number'&&typeof right==='number')return left-right;
+   return String(left??'').localeCompare(String(right??''),undefined,{numeric:true,sensitivity:'base'});
+  };
+  const categoryName=x=>cats.find(c=>c.id===x.category_id)?.name||'';
+  const isLow=x=>x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x);
+  const value=x=>({
+   name:x.name||'',category:categoryName(x),supplier:x.supplier||'',
+   quantity:Number(x.quantity_on_hand)||0,minimum:Number(x.minimum_stock)||0,
+   price:x.purchase_price==null?-1:Number(x.purchase_price),status:isLow(x)?0:1
+  })[sortColumn];
+  const result=compare(value(a),value(b));
   return (sortDirection==='desc'?-result:result)||compare(a.name,b.name);
  })
  const isLow=x=>x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x);
@@ -295,7 +308,7 @@ function render(){
   '<div class="inv-stats"><div class="inv-stat"><strong>'+rows.length+'</strong><span>ACTIVE INGREDIENTS</span></div><div class="inv-stat"><strong>'+above+'</strong><span>ABOVE MINIMUM STOCK</span></div><div class="inv-stat"><strong>'+low+'</strong><span>AT OR BELOW MINIMUM</span></div></div>'+
   '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
   '<section class="inv-table-panel"><div class="inv-table-heading"><strong>Ingredient list</strong><span>Showing '+shown.length+' of '+rows.length+' ingredients</span></div>'+
-  (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th><button type="button" class="inv-sort-head" data-sort-column="name">Ingredient <span aria-hidden="true">'+(sortColumn==='name'?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button></th><th>Category</th><th><button type="button" class="inv-sort-head" data-sort-column="supplier">Supplier <span aria-hidden="true">'+(sortColumn==='supplier'?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button></th><th>On hand</th><th>Minimum stock</th><th>Purchase price</th><th>Stock status</th><th>Actions</th></tr></thead><tbody>'+
+  (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th>'+sortHeader('name','Ingredient')+'</th><th>'+sortHeader('category','Category')+'</th><th>'+sortHeader('supplier','Supplier')+'</th><th>'+sortHeader('quantity','On hand')+'</th><th>'+sortHeader('minimum','Minimum stock')+'</th><th>'+sortHeader('price','Purchase price')+'</th><th>'+sortHeader('status','Stock status')+'</th><th>Actions</th></tr></thead><tbody>'+
   shown.map(x=>'<tr><td class="inv-ingredient-name">'+esc(x.name)+'</td><td>'+esc(cats.find(c=>c.id===x.category_id)?.name||'—')+'</td><td>'+esc(x.supplier||'—')+'</td><td>'+formatBalance(x)+'</td><td>'+fmt(x.minimum_stock)+' '+unitLabelForQty(purchaseUnit(x),x.minimum_stock)+'</td><td class="inv-price">'+(x.purchase_price!=null?'₱'+Number(x.purchase_price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+' / '+unitLabel(purchaseUnit(x)):'<span class="inv-muted">Not set</span>')+'</td><td><span class="inv-pill '+(isLow(x)?'low':'')+'">'+(isLow(x)?'Low stock':'In stock')+'</span></td><td><div class="inv-row-actions"><button class="inv-btn secondary" data-move="'+x.id+'">Stock actions</button> '+(isSuperuser()?'<button class="inv-btn secondary" data-edit="'+x.id+'">Edit</button>':'')+'</div></td></tr>').join('')+
   '</tbody></table></div>':(normalizedQuery||filter!=='all'?'<div class="inv-empty">No ingredients match your search or selected category.</div>':'<div class="inv-empty">No ingredients found. Add your first ingredient to begin tracking stock.</div>'))+
   '</section></div>';
