@@ -280,13 +280,24 @@ function openIngredientImport(){
  };
 }
 
+function sortHeader(column,label){return '<button type="button" class="inv-sort-head" data-sort-column="'+column+'">'+label+' <span aria-hidden="true">'+(sortColumn===column?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button>'}
 function render(){
  css();inventoryPolishCss();const host=root();if(!host)return;
  const normalizedQuery=query.trim().toLocaleLowerCase();
  const filtered=rows.filter(x=>(filter==='all'||x.category_id===filter)&&(x.name+' '+(x.supplier||'')).toLocaleLowerCase().includes(normalizedQuery)&&(stockFilter==='all'||(stockFilter==='low'?x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x):x.quantity_on_hand>Number(x.minimum_stock)*purchaseFactor(x))));
  const shown=[...filtered].sort((a,b)=>{
-  const compare=(left,right)=>String(left??'').localeCompare(String(right??''),undefined,{numeric:true,sensitivity:'base'});
-  const result=sortColumn==='supplier'?compare(a.supplier||'',b.supplier||''):compare(a.name,b.name);
+  const compare=(left,right)=>{
+   if(typeof left==='number'&&typeof right==='number')return left-right;
+   return String(left??'').localeCompare(String(right??''),undefined,{numeric:true,sensitivity:'base'});
+  };
+  const categoryName=x=>cats.find(c=>c.id===x.category_id)?.name||'';
+  const isLow=x=>x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x);
+  const value=x=>({
+   name:x.name||'',category:categoryName(x),supplier:x.supplier||'',
+   quantity:Number(x.quantity_on_hand)||0,minimum:Number(x.minimum_stock)||0,
+   price:x.purchase_price==null?-1:Number(x.purchase_price),status:isLow(x)?0:1
+  })[sortColumn];
+  const result=compare(value(a),value(b));
   return (sortDirection==='desc'?-result:result)||compare(a.name,b.name);
  })
  const isLow=x=>x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x);
@@ -297,7 +308,7 @@ function render(){
   '<div class="inv-stats"><div class="inv-stat"><strong>'+rows.length+'</strong><span>ACTIVE INGREDIENTS</span></div><div class="inv-stat"><strong>'+above+'</strong><span>ABOVE MINIMUM STOCK</span></div><div class="inv-stat"><strong>'+low+'</strong><span>AT OR BELOW MINIMUM</span></div></div>'+
   '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
   '<section class="inv-table-panel"><div class="inv-table-heading"><strong>Ingredient list</strong><span>Showing '+shown.length+' of '+rows.length+' ingredients</span></div>'+
-  (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th><button type="button" class="inv-sort-head" data-sort-column="name">Ingredient <span aria-hidden="true">'+(sortColumn==='name'?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button></th><th>Category</th><th><button type="button" class="inv-sort-head" data-sort-column="supplier">Supplier <span aria-hidden="true">'+(sortColumn==='supplier'?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button></th><th>On hand</th><th>Minimum stock</th><th>Purchase price</th><th>Stock status</th><th>Actions</th></tr></thead><tbody>'+
+  (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th>'+sortHeader('name','Ingredient')+'</th><th>'+sortHeader('category','Category')+'</th><th>'+sortHeader('supplier','Supplier')+'</th><th>'+sortHeader('quantity','On hand')+'</th><th>'+sortHeader('minimum','Minimum stock')+'</th><th>'+sortHeader('price','Purchase price')+'</th><th>'+sortHeader('status','Stock status')+'</th><th>Actions</th></tr></thead><tbody>'+
   shown.map(x=>'<tr><td class="inv-ingredient-name">'+esc(x.name)+'</td><td>'+esc(cats.find(c=>c.id===x.category_id)?.name||'—')+'</td><td>'+esc(x.supplier||'—')+'</td><td>'+formatBalance(x)+'</td><td>'+fmt(x.minimum_stock)+' '+unitLabelForQty(purchaseUnit(x),x.minimum_stock)+'</td><td class="inv-price">'+(x.purchase_price!=null?'₱'+Number(x.purchase_price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+' / '+unitLabel(purchaseUnit(x)):'<span class="inv-muted">Not set</span>')+'</td><td><span class="inv-pill '+(isLow(x)?'low':'')+'">'+(isLow(x)?'Low stock':'In stock')+'</span></td><td><div class="inv-row-actions"><button class="inv-btn secondary" data-move="'+x.id+'">Stock actions</button> '+(isSuperuser()?'<button class="inv-btn secondary" data-edit="'+x.id+'">Edit</button>':'')+'</div></td></tr>').join('')+
   '</tbody></table></div>':(normalizedQuery||filter!=='all'?'<div class="inv-empty">No ingredients match your search or selected category.</div>':'<div class="inv-empty">No ingredients found. Add your first ingredient to begin tracking stock.</div>'))+
   '</section></div>';
