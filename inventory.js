@@ -141,6 +141,105 @@ function inventoryPolishCss(){
  `;
  document.head.appendChild(st);
 }
+
+async function ingredientWorkbook(template=false){
+ if(!isSuperuser()){toast('Only superusers can import or export ingredients.');return}
+ if(!window.ExcelJS){toast('Excel support is still loading. Refresh the page and try again.');return}
+ const wb=new ExcelJS.Workbook();wb.creator='Hibi Cafe';wb.created=new Date();
+ const ws=wb.addWorksheet('Ingredients');
+ const headers=['Ingredient ID','Ingredient Name','Category','Consumption Unit','Purchase Unit','Conversion to Consumption Unit','Minimum Stock (Purchase Unit)','Latest Purchase Price (PHP per Purchase Unit)','Active','Current Stock (Read Only)'];
+ ws.addRow(headers);
+ ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'J1'};
+ ws.columns=[{width:38},{width:28},{width:22},{width:20},{width:18},{width:28},{width:29},{width:38},{width:12},{width:25}];
+ const head=ws.getRow(1);head.height=30;head.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF38422C'}};c.alignment={vertical:'middle',wrapText:true}});
+ if(template){
+  ws.addRow(['','Vanilla syrup',cats[0]?.name||'','ml','bottle',750,1,350,true,'']);
+  ws.addRow([]);
+  ws.addRow(['INSTRUCTIONS']);ws.getCell('A3').font={bold:true,color:{argb:'FF38422C'}};
+  ws.addRow(['Fill one ingredient per row. Keep the header names unchanged.']);
+  ws.addRow(['For existing ingredients, keep Ingredient ID to update the exact record. If blank, matching uses Ingredient Name.']);
+  ws.addRow(['Category must exactly match an existing category. Units: g, ml, pc, kg, L, bottle, carton, bag, pack, tray, box, jar, sachet, can, tin, case, bundle.']);
+  ws.addRow(['Conversion = how many consumption units are in one purchase unit (example: 1 bottle = 750 ml).']);
+  ws.addRow(['Current Stock is read-only and ignored during import. Use Stock actions to record opening stock or deliveries so movement history stays accurate.']);
+  ws.addRow(['Leave Latest Purchase Price blank if not set. Minimum Stock can be 0.']);
+  ws.addRow(['Import validates all rows first and skips rows with errors.']);
+ }else{
+  const r=await supabaseClient.from('inventory_items').select('id,name,category_id,consumption_unit,base_unit,purchase_unit,stock_unit,purchase_conversion_to_base,conversion_to_base,minimum_stock,purchase_price,active').order('name');
+  if(r.error){toast('Could not export ingredients: '+r.error.message);return}
+  const categoryResult=await supabaseClient.from('inventory_categories').select('id,name');
+  if(categoryResult.error){toast('Could not load ingredient categories: '+categoryResult.error.message);return}
+  const categoryMap=new Map((categoryResult.data||[]).map(c=>[c.id,c.name]));
+  const balances=await supabaseClient.from('inventory_balances').select('item_id,quantity_on_hand');
+  if(balances.error){toast('Could not load current stock: '+balances.error.message);return}
+  const balanceMap=new Map((balances.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0]));
+  (r.data||[]).forEach(x=>ws.addRow([x.id,x.name,categoryMap.get(x.category_id)||'',x.consumption_unit||x.base_unit||'g',x.purchase_unit||x.stock_unit||x.consumption_unit||'g',Number(x.purchase_conversion_to_base??x.conversion_to_base??1),Number(x.minimum_stock)||0,x.purchase_price==null?'':Number(x.purchase_price),x.active!==false,balanceMap.get(x.id)||0]));
+  ws.eachRow((row,n)=>{if(n>1){row.getCell(10).protection={locked:true};row.getCell(10).font={color:{argb:'FF888888'},italic:true};row.getCell(1).font={color:{argb:'FF777777'}}}});
+ }
+ const buffer=await wb.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=template?'HibiCafe_Ingredient_Import_Template.xlsx':'HibiCafe_Ingredients_Export.xlsx';a.click();URL.revokeObjectURL(url);toast(template?'Import template downloaded.':'Ingredient export downloaded.');
+}
+function openIngredientImport(){
+ if(!isSuperuser()){toast('Only superusers can import ingredients.');return}
+ openInventoryView('<div class="modal-head"><h3>Import ingredients from Excel</h3><div class="msub">Upload the Hibi Cafe ingredient template or an exported workbook. Review the validation results before saving.</div></div><div class="modal-body"><div class="inv-stat" style="max-width:760px;margin-bottom:16px"><label style="display:block;font-size:12px;color:#666;margin-bottom:8px">Excel workbook (.xlsx)</label><input id="inv-import-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="width:100%;padding:12px;border:1px dashed #cbd2c4;border-radius:9px;background:#fbfcf9"><div class="inv-sub">Use the “Ingredients” worksheet. Current Stock is read-only and will not be changed by import.</div></div><div id="inv-import-preview"></div></div><div class="modal-foot"><button class="btn btn-secondary" id="inv-import-cancel">Cancel</button><button class="btn btn-primary" id="inv-import-save" disabled>Import valid rows</button></div>','overview');
+ let staged=[];
+ $('inv-import-cancel').onclick=closeInventoryView;
+ $('inv-import-file').onchange=async e=>{
+  const file=e.target.files?.[0];staged=[];$('inv-import-save').disabled=true;$('inv-import-preview').innerHTML='';
+  if(!file)return;
+  try{
+   if(!window.ExcelJS)throw new Error('Excel support is unavailable. Refresh and try again.');
+   const wb=new ExcelJS.Workbook();await wb.xlsx.load(await file.arrayBuffer());
+   const ws=wb.getWorksheet('Ingredients');if(!ws)throw new Error('The workbook must contain a worksheet named “Ingredients”.');
+   const headers=ws.getRow(1).values.slice(1).map(v=>String(v??'').trim().toLowerCase());
+   const col=name=>headers.indexOf(name.toLowerCase())+1;
+   const required=['ingredient name','category','consumption unit','purchase unit','conversion to consumption unit','minimum stock (purchase unit)','latest purchase price (php per purchase unit)'];
+   const missing=required.filter(h=>!col(h));if(missing.length)throw new Error('Missing required columns: '+missing.join(', '));
+   const categoryMap=new Map(cats.map(c=>[c.name.trim().toLowerCase(),c.id]));
+   const byId=new Map(rows.map(x=>[String(x.id),x]));const byName=new Map(rows.map(x=>[x.name.trim().toLowerCase(),x]));
+   const seen=new Set();const errors=[];
+   for(let n=2;n<=ws.rowCount;n++){
+    const row=ws.getRow(n);const val=name=>row.getCell(col(name)).value;
+    const name=String(val('Ingredient Name')??'').trim();if(!name)continue;
+    const category=String(val('Category')??'').trim(),consumption=String(val('Consumption Unit')??'').trim(),purchase=String(val('Purchase Unit')??'').trim();
+    const conversion=Number(val('Conversion to Consumption Unit')),minimum=Number(val('Minimum Stock (Purchase Unit)'));
+    const rawPrice=val('Latest Purchase Price (PHP per Purchase Unit)'),price=rawPrice==null||String(rawPrice).trim()===''?null:Number(rawPrice);
+    const id=String(val('Ingredient ID')??'').trim();
+    const existing=(id&&byId.get(id))||byName.get(name.toLowerCase())||null;
+    const problems=[];
+    if(seen.has(name.toLowerCase()))problems.push('Duplicate name in workbook');seen.add(name.toLowerCase());
+    if(!categoryMap.has(category.toLowerCase()))problems.push('Category does not exist');
+    if(!consumptionOptions.some(x=>x[0]===consumption))problems.push('Invalid consumption unit');
+    if(!purchaseOptions.some(x=>x[0]===purchase))problems.push('Invalid purchase unit');
+    if(unitFamily(consumption)!==unitFamily(purchase))problems.push('Purchase and consumption units must be the same type');
+    if(!Number.isFinite(conversion)||conversion<=0)problems.push('Conversion must be greater than zero');
+    if(!Number.isFinite(minimum)||minimum<0)problems.push('Minimum stock must be zero or greater');
+    if(price!==null&&(!Number.isFinite(price)||price<0))problems.push('Purchase price must be blank or zero or greater');
+    if(id&&!existing)problems.push('Ingredient ID not found; clear the ID to create a new ingredient');
+    if(existing&&(existing.consumption_unit||existing.base_unit)!==consumption)problems.push('Consumption unit cannot be changed through import for an existing ingredient');
+    if(existing&&purchaseFactor(existing)!==conversion&&Number(existing.quantity_on_hand||0)>0)problems.push('Conversion cannot be changed while stock is on hand');
+    staged.push({row:n,name,category_id:categoryMap.get(category.toLowerCase()),consumption_unit:consumption,purchase_unit:purchase,conversion,minimum_stock:minimum,purchase_price:price,existing,problems});
+   }
+   if(!staged.length)throw new Error('No ingredient rows found. Add data below the header row.');
+   const valid=staged.filter(x=>!x.problems.length).length,invalid=staged.length-valid;
+   const table='<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0"><span class="inv-pill">'+valid+' valid rows</span><span class="inv-pill '+(invalid?'low':'')+'">'+invalid+' rows with errors</span></div><div style="overflow:auto;max-height:420px"><table class="inv-table" style="min-width:760px"><thead><tr><th>Excel row</th><th>Ingredient</th><th>Action</th><th>Validation</th></tr></thead><tbody>'+staged.map(x=>'<tr><td>'+x.row+'</td><td>'+esc(x.name)+'</td><td>'+(x.existing?'Update':'Create')+'</td><td>'+(x.problems.length?'<span class="inv-pill low">'+esc(x.problems.join('; '))+'</span>':'<span class="inv-pill">Ready</span>')+'</td></tr>').join('')+'</tbody></table></div><div class="inv-sub" style="margin-top:12px">Rows with errors will be skipped. Existing ingredients are matched by Ingredient ID first, then by exact ingredient name. Stock balances are never overwritten.</div>';
+   $('inv-import-preview').innerHTML=table;$('inv-import-save').disabled=valid===0;
+   $('inv-import-save').textContent='Import '+valid+' valid row'+(valid===1?'':'s');
+  }catch(err){$('inv-import-preview').innerHTML='<div class="inv-empty">'+esc(err.message)+'</div>'}
+ };
+ $('inv-import-save').onclick=async()=>{
+  const valid=staged.filter(x=>!x.problems.length);if(!valid.length)return;
+  if(!window.confirm('Import '+valid.length+' valid ingredient row(s)? Existing matching ingredients will be updated.'))return;
+  $('inv-import-save').disabled=true;let created=0,updated=0,failed=0;
+  for(const x of valid){
+   const payload={name:x.name,category_id:x.category_id,base_unit:x.consumption_unit,consumption_unit:x.consumption_unit,purchase_unit:x.purchase_unit,purchase_conversion_to_base:x.conversion,stock_unit:x.purchase_unit,conversion_to_base:x.conversion,minimum_stock:x.minimum_stock,purchase_price:x.purchase_price,updated_at:new Date().toISOString(),updated_by:CURRENT_USER.id};
+   const result=x.existing?await supabaseClient.from('inventory_items').update(payload).eq('id',x.existing.id):await supabaseClient.from('inventory_items').insert({...payload,created_by:CURRENT_USER.id});
+   if(result.error){failed++;continue}
+   if(x.existing)updated++;else created++;
+   await writeAudit(x.existing?'inventory_item_updated':'inventory_item_created','inventory_item',x.existing?.id||'','',{name:x.name,source:'excel_import',consumption_unit:x.consumption_unit,purchase_unit:x.purchase_unit});
+  }
+  await load();toast('Import finished: '+created+' created, '+updated+' updated, '+failed+' failed.');if(failed)toast('Some rows failed to save. Check the ingredient list and retry those rows.');
+ };
+}
+
 function render(){
  css();inventoryPolishCss();const host=root();if(!host)return;
  const normalizedQuery=query.trim().toLocaleLowerCase();
@@ -149,7 +248,7 @@ function render(){
  const low=rows.filter(isLow).length;
  const above=rows.length-low;
  host.innerHTML='<div class="inv-wrap inv-overview">'+
-  '<div class="inv-overview-head"><div class="inv-title"><h1>Inventory</h1><p>Monitor ingredient levels, record deliveries and manage stock activity.</p></div><button class="inv-btn" id="inv-add">+ Add ingredient</button></div>'+inventoryTabBar('overview')+
+  '<div class="inv-overview-head"><div class="inv-title"><h1>Inventory</h1><p>Monitor ingredient levels, record deliveries and manage stock activity.</p></div><div class="inv-actions"><button class="inv-btn secondary" id="inv-template">Download template</button><button class="inv-btn secondary" id="inv-export">Export Excel</button><button class="inv-btn secondary" id="inv-import">Import Excel</button><button class="inv-btn" id="inv-add">+ Add ingredient</button></div></div>'+inventoryTabBar('overview')+
   '<div class="inv-stats"><div class="inv-stat"><strong>'+rows.length+'</strong><span>ACTIVE INGREDIENTS</span></div><div class="inv-stat"><strong>'+above+'</strong><span>ABOVE MINIMUM STOCK</span></div><div class="inv-stat"><strong>'+low+'</strong><span>AT OR BELOW MINIMUM</span></div></div>'+
   '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
   '<section class="inv-table-panel"><div class="inv-table-heading"><strong>Ingredient list</strong><span>Showing '+shown.length+' of '+rows.length+' ingredients</span></div>'+
@@ -164,6 +263,7 @@ function render(){
  $('inv-stock-filter').onchange=e=>{stockFilter=e.target.value;render()};
  $('inv-refresh').onclick=()=>load().catch(err=>toast(err.message));
  $('inv-add')?.addEventListener('click',()=>itemModal());
+ $('inv-template')?.addEventListener('click',()=>ingredientWorkbook(true));$('inv-export')?.addEventListener('click',()=>ingredientWorkbook(false));$('inv-import')?.addEventListener('click',openIngredientImport);
 
  
  
