@@ -6,13 +6,13 @@ const fmt=n=>Number(n||0).toLocaleString('en-PH',{maximumFractionDigits:3});
 const consumptionOptions=[['g','Grams (g)','mass'],['ml','Milliliters (ml)','volume'],['pc','Pieces (pc)','count'],['kg','Kilograms (kg) · legacy','mass'],['L','Liters (L) · legacy','volume']];
 const purchaseOptions=[['g','Grams (g)','mass',1],['kg','Kilograms (kg)','mass',1000],['ml','Milliliters (ml)','volume',1],['L','Liters (L)','volume',1000],['pc','Pieces (pc)','count',1],['bottle','Bottle','volume',null],['carton','Carton','volume',null],['bag','Bag','mass',null],['pack','Pack','count',null],['tray','Tray','count',null],['box','Box','count',null],['jar','Jar','volume',null],['sachet','Sachet','mass',null],['can','Can','volume',null],['tin','Tin','volume',null],['case','Case','count',null],['bundle','Bundle','count',null]];
 const unitFamily=u=>({g:'mass',kg:'mass',ml:'volume',L:'volume',pc:'count',bottle:'volume',carton:'volume',bag:'mass',pack:'count',tray:'count',box:'count',jar:'volume',sachet:'mass',can:'volume',tin:'volume',case:'count',bundle:'count'})[u]||'count';
-const unitLabel=u=>({g:'g',kg:'kg',ml:'ml',L:'L',pc:'pc',bottle:'bottle',carton:'carton',bag:'bag',pack:'pack',tray:'tray',box:'box',jar:'jar',sachet:'sachet',can:'can',tin:'tin',case:'case',bundle:'bundle'})[u]||u;
+const unitLabel=u=>({g:'g',kg:'kg',ml:'ml',L:'L',pc:'pc',bottle:'bottle',carton:'carton',bag:'bag',pack:'pack',tray:'tray',box:'box',jar:'jar',sachet:'sachet',can:'can',tin:'tin',case:'case',bundle:'bundle'})[u]||u;\nconst unitLabelForQty=(u,q)=>{const n=Number(q);if(n===1)return unitLabel(u);return ({pc:'pcs',bottle:'bottles',carton:'cartons',bag:'bags',pack:'packs',tray:'trays',box:'boxes',jar:'jars',sachet:'sachets',can:'cans',tin:'tins',case:'cases',bundle:'bundles'})[u]||unitLabel(u)};
 const consumptionUnit=item=>item.consumption_unit||item.base_unit||'g';
 const purchaseUnit=item=>item.purchase_unit||item.stock_unit||consumptionUnit(item);
 const purchaseFactor=item=>Number(item.purchase_conversion_to_base??item.conversion_to_base??1);
 const displayQty=(item,q)=>fmt(q/purchaseFactor(item));
 const displayUnit=item=>unitLabel(purchaseUnit(item));
-const formatBalance=item=>fmt(item.quantity_on_hand/purchaseFactor(item))+' '+displayUnit(item);
+const formatBalance=item=>{const qty=item.quantity_on_hand/purchaseFactor(item);return fmt(qty)+' '+unitLabelForQty(purchaseUnit(item),qty)};
 const standardFactor=(purchase,consumption)=>{const p=purchaseOptions.find(x=>x[0]===purchase),c=consumptionOptions.find(x=>x[0]===consumption);if(!p||!c||p[2]!==c[2]||p[3]===null)return null;const base={mass:{g:1,kg:1000},volume:{ml:1,L:1000},count:{pc:1}}[p[2]];return base[purchase]/base[consumption]};
 let rows=[],cats=[],filter='all',query='',stockFilter='all';
 function root(){return $('inventory-content');}
@@ -148,17 +148,26 @@ async function ingredientWorkbook(template=false){
  const wb=new ExcelJS.Workbook();wb.creator='Hibi Cafe';wb.created=new Date();
  const ws=wb.addWorksheet('Ingredients');
  const headers=['Ingredient ID','Ingredient Name','Category','Consumption Unit','Purchase Unit','Conversion to Consumption Unit','Minimum Stock (Purchase Unit)','Latest Purchase Price (PHP per Purchase Unit)','Active','Current Stock (Read Only)'];
+ const lists=wb.addWorksheet('Lists');
+ const addList=(name,values,col)=>{lists.getCell(1,col).value=name;values.forEach((v,i)=>lists.getCell(i+2,col).value=v);const letter=String.fromCharCode(64+col);wb.definedNames.add("'Lists'!$"+letter+"$2:$"+letter+"$"+(values.length+1),name)};
+ addList('CategoryOptions',cats.map(c=>c.name),1);
+ addList('ConsumptionUnitOptions',consumptionOptions.map(x=>x[0]),2);
+ addList('PurchaseUnitOptions',purchaseOptions.map(x=>x[0]),3);
+ lists.getCell('D1').value='ActiveOptions';lists.getCell('D2').value='Yes';lists.getCell('D3').value='No';wb.definedNames.add("'Lists'!$D$2:$D$3",'ActiveOptions');
+ lists.state='veryHidden';
+ const addValidations=()=>{for(let n=2;n<=500;n++){ws.getCell(n,3).dataValidation={type:'list',allowBlank:false,formulae:['=CategoryOptions'],showErrorMessage:true,errorTitle:'Choose a valid category',error:'Select a category from the dropdown.'};ws.getCell(n,4).dataValidation={type:'list',allowBlank:false,formulae:['=ConsumptionUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a consumption unit from the dropdown.'};ws.getCell(n,5).dataValidation={type:'list',allowBlank:false,formulae:['=PurchaseUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a purchase unit from the dropdown.'};ws.getCell(n,6).dataValidation={type:'decimal',operator:'greaterThan',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter a number greater than zero.'};ws.getCell(n,7).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter zero or a positive number.'};ws.getCell(n,8).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:true,showErrorMessage:true,error:'Enter a valid non-negative price.'};ws.getCell(n,9).dataValidation={type:'list',formulae:['=ActiveOptions'],allowBlank:true,showErrorMessage:true,error:'Choose Yes or No.'}}};
+ addValidations();
  ws.addRow(headers);
  ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'J1'};
  ws.columns=[{width:38},{width:28},{width:22},{width:20},{width:18},{width:28},{width:29},{width:38},{width:12},{width:25}];
  const head=ws.getRow(1);head.height=30;head.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF38422C'}};c.alignment={vertical:'middle',wrapText:true}});
  if(template){
-  ws.addRow(['','Vanilla syrup',cats[0]?.name||'','ml','bottle',750,1,350,true,'']);
+  ws.addRow(['','Vanilla syrup',cats[0]?.name||'','ml','bottle',750,1,350,'Yes','']);
   ws.addRow([]);
   ws.addRow(['INSTRUCTIONS']);ws.getCell('A3').font={bold:true,color:{argb:'FF38422C'}};
   ws.addRow(['Fill one ingredient per row. Keep the header names unchanged.']);
   ws.addRow(['For existing ingredients, keep Ingredient ID to update the exact record. If blank, matching uses Ingredient Name.']);
-  ws.addRow(['Category must exactly match an existing category. Units: g, ml, pc, kg, L, bottle, carton, bag, pack, tray, box, jar, sachet, can, tin, case, bundle.']);
+  ws.addRow(['Use the dropdowns for Category, Consumption Unit, Purchase Unit and Active. Dropdown choices are generated from the current POS setup.']);\n  ws.addRow(['Conversion, Minimum Stock and Purchase Price accept numbers only. Conversion must be greater than zero; minimum stock and price must be zero or greater.']);
   ws.addRow(['Conversion = how many consumption units are in one purchase unit (example: 1 bottle = 750 ml).']);
   ws.addRow(['Current Stock is read-only and ignored during import. Use Stock actions to record opening stock or deliveries so movement history stays accurate.']);
   ws.addRow(['Leave Latest Purchase Price blank if not set. Minimum Stock can be 0.']);
@@ -172,7 +181,7 @@ async function ingredientWorkbook(template=false){
   const balances=await supabaseClient.from('inventory_balances').select('item_id,quantity_on_hand');
   if(balances.error){toast('Could not load current stock: '+balances.error.message);return}
   const balanceMap=new Map((balances.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0]));
-  (r.data||[]).forEach(x=>ws.addRow([x.id,x.name,categoryMap.get(x.category_id)||'',x.consumption_unit||x.base_unit||'g',x.purchase_unit||x.stock_unit||x.consumption_unit||'g',Number(x.purchase_conversion_to_base??x.conversion_to_base??1),Number(x.minimum_stock)||0,x.purchase_price==null?'':Number(x.purchase_price),x.active!==false,balanceMap.get(x.id)||0]));
+  (r.data||[]).forEach(x=>ws.addRow([x.id,x.name,categoryMap.get(x.category_id)||'',x.consumption_unit||x.base_unit||'g',x.purchase_unit||x.stock_unit||x.consumption_unit||'g',Number(x.purchase_conversion_to_base??x.conversion_to_base??1),Number(x.minimum_stock)||0,x.purchase_price==null?'':Number(x.purchase_price),x.active!==false?'Yes':'No',balanceMap.get(x.id)||0]));
   ws.eachRow((row,n)=>{if(n>1){row.getCell(10).protection={locked:true};row.getCell(10).font={color:{argb:'FF888888'},italic:true};row.getCell(1).font={color:{argb:'FF777777'}}}});
  }
  const buffer=await wb.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=template?'HibiCafe_Ingredient_Import_Template.xlsx':'HibiCafe_Ingredients_Export.xlsx';a.click();URL.revokeObjectURL(url);toast(template?'Import template downloaded.':'Ingredient export downloaded.');
@@ -202,7 +211,7 @@ function openIngredientImport(){
     const category=String(val('Category')??'').trim(),consumption=String(val('Consumption Unit')??'').trim(),purchase=String(val('Purchase Unit')??'').trim();
     const conversion=Number(val('Conversion to Consumption Unit')),minimum=Number(val('Minimum Stock (Purchase Unit)'));
     const rawPrice=val('Latest Purchase Price (PHP per Purchase Unit)'),price=rawPrice==null||String(rawPrice).trim()===''?null:Number(rawPrice);
-    const id=String(val('Ingredient ID')??'').trim();
+    const id=String(val('Ingredient ID')??'').trim();\n    const rawActive=String(val('Active')??'').trim().toLowerCase();\n    const active=rawActive===''?true:(['yes','true','1'].includes(rawActive)?true:(['no','false','0'].includes(rawActive)?false:null));
     const existing=(id&&byId.get(id))||byName.get(name.toLowerCase())||null;
     const problems=[];
     if(seen.has(name.toLowerCase()))problems.push('Duplicate name in workbook');seen.add(name.toLowerCase());
@@ -212,11 +221,11 @@ function openIngredientImport(){
     if(unitFamily(consumption)!==unitFamily(purchase))problems.push('Purchase and consumption units must be the same type');
     if(!Number.isFinite(conversion)||conversion<=0)problems.push('Conversion must be greater than zero');
     if(!Number.isFinite(minimum)||minimum<0)problems.push('Minimum stock must be zero or greater');
-    if(price!==null&&(!Number.isFinite(price)||price<0))problems.push('Purchase price must be blank or zero or greater');
+    if(price!==null&&(!Number.isFinite(price)||price<0))problems.push('Purchase price must be blank or zero or greater');\n    if(active===null)problems.push('Active must be Yes or No');
     if(id&&!existing)problems.push('Ingredient ID not found; clear the ID to create a new ingredient');
     if(existing&&(existing.consumption_unit||existing.base_unit)!==consumption)problems.push('Consumption unit cannot be changed through import for an existing ingredient');
     if(existing&&purchaseFactor(existing)!==conversion&&Number(existing.quantity_on_hand||0)>0)problems.push('Conversion cannot be changed while stock is on hand');
-    staged.push({row:n,name,category_id:categoryMap.get(category.toLowerCase()),consumption_unit:consumption,purchase_unit:purchase,conversion,minimum_stock:minimum,purchase_price:price,existing,problems});
+    staged.push({row:n,name,category_id:categoryMap.get(category.toLowerCase()),consumption_unit:consumption,purchase_unit:purchase,conversion,minimum_stock:minimum,purchase_price:price,active,existing,problems});
    }
    if(!staged.length)throw new Error('No ingredient rows found. Add data below the header row.');
    const valid=staged.filter(x=>!x.problems.length).length,invalid=staged.length-valid;
@@ -230,7 +239,7 @@ function openIngredientImport(){
   if(!window.confirm('Import '+valid.length+' valid ingredient row(s)? Existing matching ingredients will be updated.'))return;
   $('inv-import-save').disabled=true;let created=0,updated=0,failed=0;
   for(const x of valid){
-   const payload={name:x.name,category_id:x.category_id,base_unit:x.consumption_unit,consumption_unit:x.consumption_unit,purchase_unit:x.purchase_unit,purchase_conversion_to_base:x.conversion,stock_unit:x.purchase_unit,conversion_to_base:x.conversion,minimum_stock:x.minimum_stock,purchase_price:x.purchase_price,updated_at:new Date().toISOString(),updated_by:CURRENT_USER.id};
+   const payload={name:x.name,category_id:x.category_id,base_unit:x.consumption_unit,consumption_unit:x.consumption_unit,purchase_unit:x.purchase_unit,purchase_conversion_to_base:x.conversion,stock_unit:x.purchase_unit,conversion_to_base:x.conversion,minimum_stock:x.minimum_stock,purchase_price:x.purchase_price,active:x.active,updated_at:new Date().toISOString(),updated_by:CURRENT_USER.id};
    const result=x.existing?await supabaseClient.from('inventory_items').update(payload).eq('id',x.existing.id):await supabaseClient.from('inventory_items').insert({...payload,created_by:CURRENT_USER.id});
    if(result.error){failed++;continue}
    if(x.existing)updated++;else created++;
