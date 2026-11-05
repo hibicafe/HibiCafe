@@ -15,7 +15,7 @@ const displayQty=(item,q)=>fmt(q/purchaseFactor(item));
 const displayUnit=item=>unitLabel(purchaseUnit(item));
 const formatBalance=item=>{const qty=item.quantity_on_hand/purchaseFactor(item);return fmt(qty)+' '+unitLabelForQty(purchaseUnit(item),qty)};
 const standardFactor=(purchase,consumption)=>{const p=purchaseOptions.find(x=>x[0]===purchase),c=consumptionOptions.find(x=>x[0]===consumption);if(!p||!c||p[2]!==c[2]||p[3]===null)return null;const base={mass:{g:1,kg:1000},volume:{ml:1,L:1000},count:{pc:1}}[p[2]];return base[purchase]/base[consumption]};
-let rows=[],cats=[],filter='all',query='',stockFilter='all',sortOrder='name_asc';
+let rows=[],cats=[],filter='all',query='',stockFilter='all',sortColumn='name',sortDirection='asc';
 function root(){return $('inventory-content');}
 function inventoryTabBar(active){
  const tabs=[['overview','Overview'],['movement','Movement history'],['counts','Stock count history']];if(isSuperuser())tabs.push(['recipes','Recipes & costing'],['categories','Categories']);
@@ -109,7 +109,7 @@ function inventoryPolishCss(){
  .inv-overview .inv-table-heading span{font-size:11px;color:#858A7F}
  .inv-overview .inv-table-scroll{width:100%;overflow-x:auto}
  .inv-overview .inv-table{width:100%;min-width:920px;border-collapse:separate;border-spacing:0;font-size:12px}
- .inv-overview .inv-table th{position:static;text-align:left;padding:12px 14px;background:#F5F7F2;color:#72796A;font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;border-bottom:1px solid #E7EBE2;white-space:nowrap}
+ .inv-overview .inv-sort-head{display:inline-flex;align-items:center;gap:7px;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}.inv-overview .inv-sort-head:hover{color:#35422b}.inv-overview .inv-sort-head span{font-size:10px;color:#69745b}.inv-overview .inv-table th{position:static;text-align:left;padding:12px 14px;background:#F5F7F2;color:#72796A;font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;border-bottom:1px solid #E7EBE2;white-space:nowrap}
  .inv-overview .inv-table td{padding:13px 14px;border-bottom:1px solid #EEF0EB;color:#50554B;vertical-align:middle;white-space:nowrap}
  .inv-overview .inv-table tbody tr:last-child td{border-bottom:0}
  .inv-overview .inv-table tbody tr:hover td{background:#FBFCF9}
@@ -146,6 +146,7 @@ function inventoryPolishCss(){
 async function ingredientWorkbook(template=false){
  if(!isSuperuser()){toast('Only superusers can import or export ingredients.');return}
  if(!window.ExcelJS){toast('Excel support is still loading. Refresh the page and try again.');return}
+ try{
  const wb=new ExcelJS.Workbook();wb.creator='Hibi Cafe';wb.created=new Date();
  const ws=wb.addWorksheet('Ingredients');
  const headers=['Ingredient ID','Ingredient Name','Category','Consumption Unit','Purchase Unit','Conversion to Consumption Unit','Minimum Stock (Purchase Unit)','Latest Purchase Price (PHP per Purchase Unit)','Active','Supplier','Current Stock (Read Only)'];
@@ -157,9 +158,9 @@ async function ingredientWorkbook(template=false){
  lists.getCell('D1').value='ActiveOptions';lists.getCell('D2').value='Yes';lists.getCell('D3').value='No';wb.definedNames.add("'Lists'!$D$2:$D$3",'ActiveOptions');
  lists.state='veryHidden';
  const addValidations=()=>{for(let n=2;n<=500;n++){ws.getCell(n,3).dataValidation={type:'list',allowBlank:false,formulae:['=CategoryOptions'],showErrorMessage:true,errorTitle:'Choose a valid category',error:'Select a category from the dropdown.'};ws.getCell(n,4).dataValidation={type:'list',allowBlank:false,formulae:['=ConsumptionUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a consumption unit from the dropdown.'};ws.getCell(n,5).dataValidation={type:'list',allowBlank:false,formulae:['=PurchaseUnitOptions'],showErrorMessage:true,errorTitle:'Choose a valid unit',error:'Select a purchase unit from the dropdown.'};ws.getCell(n,6).dataValidation={type:'decimal',operator:'greaterThan',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter a number greater than zero.'};ws.getCell(n,7).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:false,showErrorMessage:true,error:'Enter zero or a positive number.'};ws.getCell(n,8).dataValidation={type:'decimal',operator:'greaterThanOrEqual',formulae:[0],allowBlank:true,showErrorMessage:true,error:'Enter a valid non-negative price.'};ws.getCell(n,9).dataValidation={type:'list',formulae:['=ActiveOptions'],allowBlank:true,showErrorMessage:true,error:'Choose Yes or No.'}}};
- addValidations();
  ws.addRow(headers);
- ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'J1'};
+ addValidations();
+ ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'K1'};
  ws.columns=[{width:38},{width:28},{width:22},{width:20},{width:18},{width:28},{width:29},{width:38},{width:12},{width:26},{width:25}];
  const head=ws.getRow(1);head.height=30;head.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF38422C'}};c.alignment={vertical:'middle',wrapText:true}});
  if(template){
@@ -199,14 +200,16 @@ async function ingredientWorkbook(template=false){
   a.style.display='none';
   document.body.appendChild(a);
   a.click();
-  a.remove();
+  window.setTimeout(()=>a.remove(),1000);
   // Keep the object URL alive long enough for the browser to start the download.
-  window.setTimeout(()=>URL.revokeObjectURL(url),30000);
+  window.setTimeout(()=>URL.revokeObjectURL(url),120000);
   toast(template?'Import template downloaded.':'Ingredient export downloaded.');
  }catch(error){
   console.error('Ingredient workbook generation failed:',error);
   toast('Could not generate Excel file: '+(error?.message||'Unknown error'));
  }
+ }catch(error){console.error('Ingredient workbook setup failed:',error);toast('Excel generation failed: '+(error?.message||String(error)));}
+
 }
 function openIngredientImport(){
  if(!isSuperuser()){toast('Only superusers can import ingredients.');return}
@@ -279,16 +282,20 @@ function render(){
  css();inventoryPolishCss();const host=root();if(!host)return;
  const normalizedQuery=query.trim().toLocaleLowerCase();
  const filtered=rows.filter(x=>(filter==='all'||x.category_id===filter)&&(x.name+' '+(x.supplier||'')).toLocaleLowerCase().includes(normalizedQuery)&&(stockFilter==='all'||(stockFilter==='low'?x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x):x.quantity_on_hand>Number(x.minimum_stock)*purchaseFactor(x))));
- const shown=[...filtered].sort((a,b)=>{const name=a.name.localeCompare(b.name,undefined,{sensitivity:'base'}),supplier=(a.supplier||'').localeCompare(b.supplier||'',undefined,{sensitivity:'base'}),category=(cats.find(c=>c.id===a.category_id)?.name||'').localeCompare(cats.find(c=>c.id===b.category_id)?.name||'',undefined,{sensitivity:'base'}),stockA=a.quantity_on_hand/purchaseFactor(a),stockB=b.quantity_on_hand/purchaseFactor(b);switch(sortOrder){case'name_desc':return -name;case'category':return category||name;case'supplier':return supplier||name;case'stock_asc':return stockA-stockB||name;case'stock_desc':return stockB-stockA||name;default:return name}});
+ const shown=[...filtered].sort((a,b)=>{
+  const compare=(left,right)=>String(left??'').localeCompare(String(right??''),undefined,{numeric:true,sensitivity:'base'});
+  const result=sortColumn==='supplier'?compare(a.supplier||'',b.supplier||''):compare(a.name,b.name);
+  return (sortDirection==='desc'?-result:result)||compare(a.name,b.name);
+ })
  const isLow=x=>x.quantity_on_hand<=Number(x.minimum_stock)*purchaseFactor(x);
  const low=rows.filter(isLow).length;
  const above=rows.length-low;
  host.innerHTML='<div class="inv-wrap inv-overview">'+
   '<div class="inv-overview-head"><div class="inv-title"><h1>Inventory</h1><p>Monitor ingredient levels, record deliveries and manage stock activity.</p></div><div class="inv-actions"><button class="inv-btn secondary" id="inv-template">Download template</button><button class="inv-btn secondary" id="inv-export">Export Excel</button><button class="inv-btn secondary" id="inv-import">Import Excel</button><button class="inv-btn" id="inv-add">+ Add ingredient</button></div></div>'+inventoryTabBar('overview')+
   '<div class="inv-stats"><div class="inv-stat"><strong>'+rows.length+'</strong><span>ACTIVE INGREDIENTS</span></div><div class="inv-stat"><strong>'+above+'</strong><span>ABOVE MINIMUM STOCK</span></div><div class="inv-stat"><strong>'+low+'</strong><span>AT OR BELOW MINIMUM</span></div></div>'+
-  '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><select id="inv-sort" aria-label="Sort ingredients"><option value="name_asc" '+(sortOrder==='name_asc'?'selected':'')+'>Name: A to Z</option><option value="name_desc" '+(sortOrder==='name_desc'?'selected':'')+'>Name: Z to A</option><option value="category" '+(sortOrder==='category'?'selected':'')+'>Category</option><option value="supplier" '+(sortOrder==='supplier'?'selected':'')+'>Supplier</option><option value="stock_asc" '+(sortOrder==='stock_asc'?'selected':'')+'>Stock: Lowest first</option><option value="stock_desc" '+(sortOrder==='stock_desc'?'selected':'')+'>Stock: Highest first</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
+  '<div class="inv-toolbar"><div class="inv-tools"><div class="inv-search-wrap"><input id="inv-search" aria-label="Search ingredients" placeholder="Search ingredients…" value="'+esc(query)+'"></div><select id="inv-filter" aria-label="Filter by category"><option value="all">All categories</option>'+cats.map(c=>'<option value="'+c.id+'" '+(filter===c.id?'selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select><select id="inv-stock-filter" aria-label="Filter by stock status"><option value="all">All stock statuses</option><option value="low" '+(stockFilter==='low'?'selected':'')+'>Low stock</option><option value="in" '+(stockFilter==='in'?'selected':'')+'>In stock</option></select><button class="inv-btn secondary inv-refresh" id="inv-refresh">Refresh</button></div></div>'+
   '<section class="inv-table-panel"><div class="inv-table-heading"><strong>Ingredient list</strong><span>Showing '+shown.length+' of '+rows.length+' ingredients</span></div>'+
-  (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th>Ingredient</th><th>Category</th><th>Supplier</th><th>On hand</th><th>Minimum stock</th><th>Purchase price</th><th>Stock status</th><th>Actions</th></tr></thead><tbody>'+
+  (shown.length?'<div class="inv-table-scroll"><table class="inv-table"><thead><tr><th><button type="button" class="inv-sort-head" data-sort-column="name">Ingredient <span aria-hidden="true">'+(sortColumn==='name'?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button></th><th>Category</th><th><button type="button" class="inv-sort-head" data-sort-column="supplier">Supplier <span aria-hidden="true">'+(sortColumn==='supplier'?(sortDirection==='asc'?'▲':'▼'):'↕')+'</span></button></th><th>On hand</th><th>Minimum stock</th><th>Purchase price</th><th>Stock status</th><th>Actions</th></tr></thead><tbody>'+
   shown.map(x=>'<tr><td class="inv-ingredient-name">'+esc(x.name)+'</td><td>'+esc(cats.find(c=>c.id===x.category_id)?.name||'—')+'</td><td>'+esc(x.supplier||'—')+'</td><td>'+formatBalance(x)+'</td><td>'+fmt(x.minimum_stock)+' '+unitLabelForQty(purchaseUnit(x),x.minimum_stock)+'</td><td class="inv-price">'+(x.purchase_price!=null?'₱'+Number(x.purchase_price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})+' / '+unitLabel(purchaseUnit(x)):'<span class="inv-muted">Not set</span>')+'</td><td><span class="inv-pill '+(isLow(x)?'low':'')+'">'+(isLow(x)?'Low stock':'In stock')+'</span></td><td><div class="inv-row-actions"><button class="inv-btn secondary" data-move="'+x.id+'">Stock actions</button> '+(isSuperuser()?'<button class="inv-btn secondary" data-edit="'+x.id+'">Edit</button>':'')+'</div></td></tr>').join('')+
   '</tbody></table></div>':(normalizedQuery||filter!=='all'?'<div class="inv-empty">No ingredients match your search or selected category.</div>':'<div class="inv-empty">No ingredients found. Add your first ingredient to begin tracking stock.</div>'))+
   '</section></div>';
@@ -297,7 +304,7 @@ function render(){
  search.oninput=e=>{const value=e.target.value,start=e.target.selectionStart??value.length,end=e.target.selectionEnd??value.length;query=value;render();const next=$('inv-search');next.focus();next.setSelectionRange(start,end)};
  $('inv-filter').onchange=e=>{filter=e.target.value;render()};
  $('inv-stock-filter').onchange=e=>{stockFilter=e.target.value;render()};
- $('inv-sort').onchange=e=>{sortOrder=e.target.value;render()};
+ host.querySelectorAll('[data-sort-column]').forEach(b=>b.onclick=()=>{const next=b.dataset.sortColumn;if(sortColumn===next)sortDirection=sortDirection==='asc'?'desc':'asc';else{sortColumn=next;sortDirection='asc'}render()});
  $('inv-refresh').onclick=()=>load().catch(err=>toast(err.message));
  $('inv-add')?.addEventListener('click',()=>itemModal());
  $('inv-template')?.addEventListener('click',()=>ingredientWorkbook(true));$('inv-export')?.addEventListener('click',()=>ingredientWorkbook(false));$('inv-import')?.addEventListener('click',openIngredientImport);
