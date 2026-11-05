@@ -213,7 +213,8 @@ function openIngredientImport(){
     const category=String(val('Category')??'').trim(),consumption=String(val('Consumption Unit')??'').trim(),purchase=String(val('Purchase Unit')??'').trim();
     const conversion=Number(val('Conversion to Consumption Unit')),minimum=Number(val('Minimum Stock (Purchase Unit)'));
     const rawPrice=val('Latest Purchase Price (PHP per Purchase Unit)'),price=rawPrice==null||String(rawPrice).trim()===''?null:Number(rawPrice);
-    const id=String(val('Ingredient ID')??'').trim();\n    const supplier=col('Supplier')?String(val('Supplier')??'').trim():'';
+    const id=String(val('Ingredient ID')??'').trim();
+    const supplier=col('Supplier')?String(val('Supplier')??'').trim():'';
     const rawActive=String(val('Active')??'').trim().toLowerCase();
     const active=rawActive===''?true:(['yes','true','1'].includes(rawActive)?true:(['no','false','0'].includes(rawActive)?false:null));
     const existing=(id&&byId.get(id))||byName.get(name.toLowerCase())||null;
@@ -275,7 +276,8 @@ function render(){
  const search=$('inv-search');
  search.oninput=e=>{const value=e.target.value,start=e.target.selectionStart??value.length,end=e.target.selectionEnd??value.length;query=value;render();const next=$('inv-search');next.focus();next.setSelectionRange(start,end)};
  $('inv-filter').onchange=e=>{filter=e.target.value;render()};
- $('inv-stock-filter').onchange=e=>{stockFilter=e.target.value;render()};\n $('inv-sort').onchange=e=>{sortOrder=e.target.value;render()};
+ $('inv-stock-filter').onchange=e=>{stockFilter=e.target.value;render()};
+ $('inv-sort').onchange=e=>{sortOrder=e.target.value;render()};
  $('inv-refresh').onclick=()=>load().catch(err=>toast(err.message));
  $('inv-add')?.addEventListener('click',()=>itemModal());
  $('inv-template')?.addEventListener('click',()=>ingredientWorkbook(true));$('inv-export')?.addEventListener('click',()=>ingredientWorkbook(false));$('inv-import')?.addEventListener('click',openIngredientImport);
