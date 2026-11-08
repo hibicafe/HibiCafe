@@ -80,6 +80,7 @@ nav.tabs button.active{background:var(--caramel);color:#fff;}
 .shift-status-pill.none{background:#FBEDE8;color:#8B3A2B;}
 .product-card .pname{font-weight:600;font-size:14.5px;line-height:1.25;margin-bottom:8px;}
 .product-card .pprice{font-size:13px;color:var(--caramel-dark);font-weight:700;font-family:'JetBrains Mono',monospace;}
+.product-stock-count{font-size:10.5px;color:#65734C;font-weight:700;margin-top:5px;line-height:1.3;}
 .product-card .ptag{position:absolute;top:8px;right:8px;font-size:9.5px;background:var(--matcha);color:#fff;padding:2px 6px;border-radius:6px;font-weight:700;letter-spacing:0.3px;}
 
 .pos-right{flex:1;display:flex;flex-direction:column;background:var(--panel);min-width:340px;max-width:420px;}
@@ -121,6 +122,7 @@ nav.tabs button.active{background:var(--caramel);color:#fff;}
 .size-option:hover{border-color:var(--caramel);}
 .size-option.selected{border-color:var(--caramel);background:#FBF1E4;}
 .size-option .sprice{font-family:'JetBrains Mono',monospace;color:var(--caramel-dark);}
+.size-stock-count{font-size:10px;color:#65734C;font-weight:600;}
 .addon-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--cream-dim);}
 .addon-row label{flex:1;font-size:14px;font-weight:500;cursor:pointer;}
 .addon-row .aprice{font-size:13px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;}
@@ -899,6 +901,7 @@ function optimizeLogoImage(file){
 let MENU = defaultMenu();
 let ADDONS = defaultAddons();
 let INVENTORY_VARIANT_AVAILABILITY={};
+let INVENTORY_VARIANT_REMAINING={};
 let INVENTORY_VARIANT_REFRESHING=false;
 let INVENTORY_VARIANT_CHANNEL=null;
 async function refreshInventoryVariantAvailability(){
@@ -907,19 +910,23 @@ async function refreshInventoryVariantAvailability(){
  try{
   const [rr,br]=await Promise.all([supabaseClient.from('inventory_recipe_lines').select('recipe_type,product_id,product_size,item_id,quantity_per_unit,optional'),supabaseClient.from('inventory_balances').select('item_id,quantity_on_hand')]);
   if(rr.error)throw rr.error;if(br.error)throw br.error;
-  const balances=new Map((br.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0])),recipes=rr.data||[],next={};
+  const balances=new Map((br.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0])),recipes=rr.data||[],next={},remaining={};
   for(const p of (MENU?.products||[])){for(const size of Object.keys(p.sizes||{})){
    const lines=recipes.filter(x=>x.recipe_type==='product'&&x.product_id===String(p.id)&&x.product_size===size);
    if(!lines.length){next[p.id+'|'+size]=true;continue}
-   const required=new Map();for(const line of lines){const prev=required.get(line.item_id)||{qty:0,optional:true};prev.qty+=Number(line.quantity_per_unit)||0;prev.optional=prev.optional&&!!line.optional;required.set(line.item_id,prev)}
+   const required=new Map();for(const line of lines){if(!line.item_id)continue;const prev=required.get(line.item_id)||{qty:0,optional:true};prev.qty+=Number(line.quantity_per_unit)||0;prev.optional=prev.optional&&!!line.optional;required.set(line.item_id,prev)}
    next[p.id+'|'+size]=[...required].every(([id,x])=>x.optional||(balances.get(id)||0)>=x.qty);
+   const mandatory=[...required].filter(([,x])=>!x.optional&&x.qty>0);
+   remaining[p.id+'|'+size]=mandatory.length?Math.max(0,Math.min(...mandatory.map(([id,x])=>Math.floor(((balances.get(id)||0)+1e-9)/x.qty)))):null;
   }}
   INVENTORY_VARIANT_AVAILABILITY=next;
+  INVENTORY_VARIANT_REMAINING=remaining;
   if(document.getElementById('page-pos')?.classList.contains('active'))renderPOS();
  }catch(e){console.warn('Could not refresh ingredient availability:',e)}
  finally{INVENTORY_VARIANT_REFRESHING=false}
 }
 function inventoryVariantAvailable(productId,size){return INVENTORY_VARIANT_AVAILABILITY[String(productId)+'|'+String(size)]!==false}
+function inventoryVariantRemaining(productId,size){const key=String(productId)+'|'+String(size);return Object.prototype.hasOwnProperty.call(INVENTORY_VARIANT_REMAINING,key)?INVENTORY_VARIANT_REMAINING[key]:null}
 function subscribeInventoryAvailability(){
  if(INVENTORY_VARIANT_CHANNEL||!supabaseClient)return;
  INVENTORY_VARIANT_CHANNEL=supabaseClient.channel('hibi-inventory-availability')
@@ -1982,12 +1989,15 @@ function renderPOS(){
       const priceMap=orderChannel==='GrabFood'?(pr.grabPrices||pr.sizes):pr.sizes;
       const priceLabel = sizeKeys.length===1 ? PESO(priceMap[sizeKeys[0]]??pr.sizes[sizeKeys[0]]) : PESO(Math.min(...sizeKeys.map(k=>priceMap[k]??pr.sizes[k]))) + ' +';
       const recipeSizes=Object.keys(pr.sizes||{}).filter(k=>pr.sizes[k]!==null);const soldOut=isProductSoldOut(pr,selectedOrderDate)||(recipeSizes.length>0&&recipeSizes.every(k=>!inventoryVariantAvailable(pr.id,k)));
+      const stockCounts=recipeSizes.map(k=>({size:k,count:inventoryVariantRemaining(pr.id,k)})).filter(x=>x.count!==null);
+      const stockLabel=stockCounts.length?(stockCounts.length===1&&recipeSizes.length===1?`${stockCounts[0].count} left`:stockCounts.map(x=>`${x.size}: ${x.count}`).join(' · ')+' left'):'';
       return `<button class="product-card ${pr.active?'':'unavailable'} ${soldOut?'sold-out':''}" data-pid="${pr.id}" data-cat="${escAttr(pr.category)}" ${soldOut?'disabled':''}>
         ${soldOut?'<span class="soldout-ribbon">SOLD OUT</span>':''}
         <div class="product-visual ${pr.image?'has-image':''}">${pr.image?`<img src="${pr.image}" alt="${escAttr(pr.name)}" loading="lazy">`:`<span>${productIcon(pr)}</span>`}</div>
         ${productIsDrink(pr)?'':'<span class="ptag">FOOD</span>'}
         <div class="pname">${esc(pr.name)}</div>
         <div class="pprice">${soldOut?'Unavailable':priceLabel}</div>
+        ${stockLabel&&!soldOut?`<div class="product-stock-count">${esc(stockLabel)}</div>`:''}
         ${soldOut?'':'<span class="product-add">+</span>'}
       </button>`;
     }).join('') || emptyGridMsg('No items in this category yet. Add some in Menu Management.');
@@ -2046,10 +2056,10 @@ function openProductModal(pr){
         ${sizeKeys.length>1 ? `
           <div class="section-title">Choose size</div>
           <div id="size-list">
-            ${sizeKeys.map(k=>`
+            ${sizeKeys.map(k=>{const remaining=inventoryVariantRemaining(pr.id,k);return `
               <div class="size-option ${k===chosenSize?'selected':''}" data-size="${escAttr(k)}">
-                <span>${esc(k)}</span><span class="sprice">${PESO(priceMap[k] ?? pr.sizes[k])}</span>
-              </div>`).join('')}
+                <span>${esc(k)}${remaining!==null?` <small class="size-stock-count">· ${remaining} left</small>`:''}</span><span class="sprice">${PESO(priceMap[k] ?? pr.sizes[k])}</span>
+              </div>`}).join('')}
           </div>` : ''}
         ${freeUpsizeEligible ? `
           <button type="button" class="free-upsize-card ${freeUpsize?'active':''}" id="free-upsize-option" aria-pressed="${freeUpsize?'true':'false'}">
