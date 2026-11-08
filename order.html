@@ -46,7 +46,7 @@ function renderCategories(){
 }
 function renderMenu(){
  const query=($('menu-search')?.value||'').trim().toLowerCase();
- const matches=catalog.products.filter(p=>(activeCategory==='All'||String(p.category||'').trim()===activeCategory)&&(!query||String(p.name||'').toLowerCase().includes(query)||String(p.category||'').toLowerCase().includes(query)));
+ const matches=catalog.products.filter(p=>p.active!==false&&(activeCategory==='All'||String(p.category||'').trim()===activeCategory)&&(!query||String(p.name||'').toLowerCase().includes(query)||String(p.category||'').toLowerCase().includes(query)));
  const categories=[...new Set(catalog.products.map(p=>String(p.category||'').trim()).filter(Boolean))];
  const categoryRank=new Map(categories.map((c,i)=>[c,i]));
  const visible=matches.slice().sort((a,b)=>{
@@ -163,6 +163,8 @@ function startAvailabilityRealtime(){
  const refreshFallback=()=>{if(!availabilityFallbackTimer)availabilityFallbackTimer=setInterval(loadMenu,15000)};
  if(!REALTIME_SUPABASE){refreshFallback();return;}
  availabilityChannel=REALTIME_SUPABASE.channel('hibi-online-product-availability',{config:{private:false}})
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'app_data',filter:'key=eq.hibi-menu'},()=>loadMenu())
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'app_data',filter:'key=eq.hibi-addons'},()=>loadMenu())
   .on('postgres_changes',{event:'*',schema:'public',table:'online_product_availability'},payload=>{
    const row=payload.new||payload.old||{},id=String(row.product_id||'');
    if(!id){loadMenu();return;}
@@ -181,6 +183,8 @@ function startAvailabilityRealtime(){
 }
 loadMenu();
 startAvailabilityRealtime();
+// Keep menu listing changes in sync even if the app_data Realtime event is unavailable.
+const menuRefreshTimer=setInterval(()=>{if(!document.hidden)loadMenu()},15000);
 renderCart();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadMenu()});
 window.addEventListener('focus',loadMenu);
