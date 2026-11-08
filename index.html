@@ -1989,8 +1989,8 @@ function renderPOS(){
       const priceMap=orderChannel==='GrabFood'?(pr.grabPrices||pr.sizes):pr.sizes;
       const priceLabel = sizeKeys.length===1 ? PESO(priceMap[sizeKeys[0]]??pr.sizes[sizeKeys[0]]) : PESO(Math.min(...sizeKeys.map(k=>priceMap[k]??pr.sizes[k]))) + ' +';
       const recipeSizes=Object.keys(pr.sizes||{}).filter(k=>pr.sizes[k]!==null);const soldOut=isProductSoldOut(pr,selectedOrderDate)||(recipeSizes.length>0&&recipeSizes.every(k=>!inventoryVariantAvailable(pr.id,k)));
-      const stockCounts=recipeSizes.map(k=>({size:k,count:inventoryVariantRemaining(pr.id,k)})).filter(x=>x.count!==null);
-      const stockLabel=stockCounts.length?(stockCounts.length===1&&recipeSizes.length===1?`${stockCounts[0].count} left`:stockCounts.map(x=>`${x.size}: ${x.count}`).join(' · ')+' left'):'';
+      const stockCounts=recipeSizes.map(k=>inventoryVariantRemaining(pr.id,k)).filter(count=>count!==null&&count>0);
+      const stockLabel=stockCounts.length?`${Math.min(...stockCounts)} left`:'';
       return `<button class="product-card ${pr.active?'':'unavailable'} ${soldOut?'sold-out':''}" data-pid="${pr.id}" data-cat="${escAttr(pr.category)}" ${soldOut?'disabled':''}>
         ${soldOut?'<span class="soldout-ribbon">SOLD OUT</span>':''}
         <div class="product-visual ${pr.image?'has-image':''}">${pr.image?`<img src="${pr.image}" alt="${escAttr(pr.name)}" loading="lazy">`:`<span>${productIcon(pr)}</span>`}</div>
