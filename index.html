@@ -1003,13 +1003,13 @@ function requireActionReason(label='this change'){
   if(!reason || !reason.trim()){ toast('A reason / note is required.'); return null; }
   return reason.trim();
 }
-function showApp(){ document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display=''; document.getElementById('cashier-pill').textContent='User: '+(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff'); applyPermissions(); updateDatabaseStatusUI(); subscribeInventoryAvailability(); refreshInventoryVariantAvailability(); }
+function showApp(){ document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display=''; document.getElementById('cashier-pill').textContent='User: '+(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff'); applyPermissions(); updateDatabaseStatusUI(); subscribeInventoryAvailability(); }
 function showLoginError(msg){ const e=document.getElementById('login-error'); e.textContent=msg||''; }
 async function doLogin(){
   showLoginError(''); const username=document.getElementById('login-username').value.trim().toLowerCase(); const password=document.getElementById('login-password').value;
   if(!username||!password){showLoginError('Enter your username and password.');return;}
   const btn=document.getElementById('login-btn'); btn.disabled=true; btn.textContent='Signing in…';
-  try{ const email=await getLoginProfile(username); if(!email) throw new Error('Invalid username or password.'); const {data,error}=await supabaseClient.auth.signInWithPassword({email,password}); if(error) throw error; CURRENT_USER=data.user; CURRENT_USER.access_token=data.session.access_token; await loadProfile(CURRENT_USER); await writeAudit('login','session',CURRENT_USER.id,'',{username:CURRENT_PROFILE?.username||username,role:CURRENT_PROFILE?.role||''}); showApp(); await loadAll(); startLiveOrderSync(); startDatabaseHealthMonitor(); applyBranding(); goToPage('dashboard'); renderPOS(); renderOrderNumPreview(); }
+  try{ const email=await getLoginProfile(username); if(!email) throw new Error('Invalid username or password.'); const {data,error}=await supabaseClient.auth.signInWithPassword({email,password}); if(error) throw error; CURRENT_USER=data.user; CURRENT_USER.access_token=data.session.access_token; await loadProfile(CURRENT_USER); await writeAudit('login','session',CURRENT_USER.id,'',{username:CURRENT_PROFILE?.username||username,role:CURRENT_PROFILE?.role||''}); showApp(); await loadAll(); await refreshInventoryVariantAvailability(); startLiveOrderSync(); startDatabaseHealthMonitor(); applyBranding(); goToPage('dashboard'); renderPOS(); renderOrderNumPreview(); }
   catch(e){ console.error(e); showLoginError(e.message==='Invalid login credentials'?'Invalid username or password.':e.message||'Unable to sign in.'); if(supabaseClient) await supabaseClient.auth.signOut(); }
   finally{btn.disabled=false;btn.textContent='Sign in';}
 }
@@ -1970,7 +1970,7 @@ function renderPOS(){
 
   const grid = document.getElementById('product-grid');
   if(activeCategory==='Add-Ons'){
-    grid.innerHTML = ADDONS.map(a=>`
+    grid.innerHTML = ADDONS.filter(a=>a.active!==false).map(a=>`
       <button class="product-card ${a.active?'':'unavailable'}" data-addon="${a.id}">
         <div class="pname">${esc(a.name)}</div>
         <div class="pprice">${PESO(a.price)}</div>
@@ -1981,7 +1981,7 @@ function renderPOS(){
   } else {
     const query = productSearch.trim().toLowerCase();
     const items = sortProductsAvailability(MENU.products.filter(p=>
-      p.category===activeCategory &&
+      p.active!==false && p.category===activeCategory &&
       (!query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query))
     ));
     grid.innerHTML = items.map(pr=>{
@@ -2003,7 +2003,7 @@ function renderPOS(){
     }).join('') || emptyGridMsg('No items in this category yet. Add some in Menu Management.');
     grid.querySelectorAll('[data-pid]').forEach(b=>b.addEventListener('click',()=>{
       const pr = MENU.products.find(x=>x.id===b.dataset.pid);
-      if(!pr?.active || isProductSoldOut(pr,selectedOrderDate)){toast(`${pr?.name||'Item'} is sold out today.`);return;}
+      if(!pr || pr.active===false){toast('This item is currently delisted from the menu.');return;} if(isProductSoldOut(pr,selectedOrderDate)||Object.keys(pr.sizes||{}).filter(k=>pr.sizes[k]!==null).every(k=>!inventoryVariantAvailable(pr.id,k))){toast(`${pr.name} is sold out today.`);return;}
       openProductModal(pr);
     }));
   }
@@ -2057,8 +2057,8 @@ function openProductModal(pr){
           <div class="section-title">Choose size</div>
           <div id="size-list">
             ${sizeKeys.map(k=>{const remaining=inventoryVariantRemaining(pr.id,k);return `
-              <div class="size-option ${k===chosenSize?'selected':''}" data-size="${escAttr(k)}">
-                <span>${esc(k)}${remaining!==null?` <small class="size-stock-count">· ${remaining} left</small>`:''}</span><span class="sprice">${PESO(priceMap[k] ?? pr.sizes[k])}</span>
+              <div class="size-option ${k===chosenSize?'selected':''} ${inventoryVariantAvailable(pr.id,k)?'':'sold-out'}" data-size="${escAttr(k)}">
+                <span>${esc(k)}${remaining!==null?` <small class="size-stock-count">· ${remaining} left</small>`:''}${inventoryVariantAvailable(pr.id,k)?'':' <small class="size-stock-count">· Sold out</small>'}</span><span class="sprice">${PESO(priceMap[k] ?? pr.sizes[k])}</span>
               </div>`}).join('')}
           </div>` : ''}
         ${freeUpsizeEligible ? `
@@ -3994,7 +3994,7 @@ function renderMenuMgmt(){
     pr.active = !pr.active;
     await persistMenu();
     await writeAudit('toggle_product','product',pr.id,'',{name:pr.name,active:pr.active});
-    renderMenuMgmt();
+    renderMenuMgmt(); renderPOS();
   });
   catsWrap.querySelectorAll('[data-photo]').forEach(b=>b.onclick=()=>{
     const input=catsWrap.querySelector(`[data-photo-input="${CSS.escape(b.dataset.photo)}"]`);
@@ -4055,7 +4055,7 @@ function renderMenuMgmt(){
     </div>`).join('') || `<div style="color:var(--text-dim);font-size:13px;">No add-ons yet.</div>`;
   addonWrap.querySelectorAll('[data-atoggle]').forEach(t=>t.onclick=async()=>{
     const a = ADDONS.find(x=>x.id===t.dataset.atoggle);
-    a.active=!a.active; await persistAddons(); await writeAudit('toggle_addon','addon',a.id,'',{name:a.name,active:a.active}); renderMenuMgmt();
+    a.active=!a.active; await persistAddons(); await writeAudit('toggle_addon','addon',a.id,'',{name:a.name,active:a.active}); renderMenuMgmt(); renderPOS();
   });
   addonWrap.querySelectorAll('[data-aedit]').forEach(b=>b.onclick=()=>openEditAddonModal(ADDONS.find(a=>a.id===b.dataset.aedit)));
   addonWrap.querySelectorAll('[data-adel]').forEach(b=>b.onclick=async()=>{
@@ -4697,7 +4697,7 @@ function escAttr(s){ return esc(s); }
   document.getElementById('db-status-chip').onclick=()=>checkDatabaseHealth({silent:false});
   supabaseClient.auth.onAuthStateChange((_event,session)=>{ if(session?.access_token&&CURRENT_USER){CURRENT_USER.access_token=session.access_token;} });
   const {data}=await supabaseClient.auth.getSession();
-  if(data.session){ try{ CURRENT_USER=data.session.user; CURRENT_USER.access_token=data.session.access_token; await loadProfile(CURRENT_USER); await writeAudit('login_session_restore','session',CURRENT_USER.id,'',{username:CURRENT_PROFILE?.username||'',role:CURRENT_PROFILE?.role||''}); showApp(); await loadAll(); startLiveOrderSync(); startDatabaseHealthMonitor(); applyBranding(); goToPage('dashboard'); renderPOS(); renderOrderNumPreview(); }catch(e){await doLogout();} }
+  if(data.session){ try{ CURRENT_USER=data.session.user; CURRENT_USER.access_token=data.session.access_token; await loadProfile(CURRENT_USER); await writeAudit('login_session_restore','session',CURRENT_USER.id,'',{username:CURRENT_PROFILE?.username||'',role:CURRENT_PROFILE?.role||''}); showApp(); await loadAll(); await refreshInventoryVariantAvailability(); startLiveOrderSync(); startDatabaseHealthMonitor(); applyBranding(); goToPage('dashboard'); renderPOS(); renderOrderNumPreview(); }catch(e){await doLogout();} }
 })();
 </script>
 </body>
