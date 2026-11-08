@@ -2003,7 +2003,7 @@ function renderPOS(){
     }).join('') || emptyGridMsg('No items in this category yet. Add some in Menu Management.');
     grid.querySelectorAll('[data-pid]').forEach(b=>b.addEventListener('click',()=>{
       const pr = MENU.products.find(x=>x.id===b.dataset.pid);
-      if(!pr || pr.active===false){toast('This item is currently delisted from the menu.');return;} if(isProductSoldOut(pr,selectedOrderDate)||Object.keys(pr.sizes||{}).filter(k=>pr.sizes[k]!==null).every(k=>!inventoryVariantAvailable(pr.id,k))){toast(`${pr.name} is sold out today.`);return;}
+      if(!pr || pr.active===false){toast('This item is currently delisted from the menu.');return;} const sizedKeys=Object.keys(pr.sizes||{}).filter(k=>pr.sizes[k]!==null); if(isProductSoldOut(pr,selectedOrderDate)||(sizedKeys.length>0&&sizedKeys.every(k=>!inventoryVariantAvailable(pr.id,k)))){toast(`${pr.name} is sold out today.`);return;}
       openProductModal(pr);
     }));
   }
