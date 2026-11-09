@@ -1411,8 +1411,27 @@ function nextShiftNumber(dateKey){ const xs=shiftsForDate(dateKey); return xs.le
 function shiftOpeningSource(dateKey){
   const prior=lastClosedShiftForDate(dateKey);
   if(prior && prior.actualCashCounted!=null) return {amount:Number(prior.actualCashCounted)||0,label:`${prior.shiftName} actual cash counted`,locked:true};
-  const prev=EOD[getPreviousDate(dateKey)]||{};
-  if(prev.actual!=null) return {amount:Number(prev.actual)||0,label:`Previous day (${getPreviousDate(dateKey)}) actual cash counted`,locked:true};
+
+  // A business day can be skipped. Carry the drawer forward from the latest
+  // non-voided fund snapshot before this business date, not only yesterday's EOD.
+  const priorSnapshots=(Array.isArray(FUND_SNAPSHOTS)?FUND_SNAPSHOTS:[])
+    .filter(s=>s && s.type!=='voided' && s.date && s.date<dateKey && Number.isFinite(Number(s.cash)))
+    .sort((a,b)=>Date.parse(b.snapshotAt||'')-Date.parse(a.snapshotAt||''));
+  const snapshot=priorSnapshots[0];
+  if(snapshot) return {amount:Number(snapshot.cash)||0,label:`Latest valid fund snapshot (${snapshot.date}) cash balance`,locked:true};
+
+  // Older installations may have reconciliation rows but no fund snapshot.
+  const priorEod=Object.entries(EOD||{})
+    .filter(([date,row])=>date<dateKey && row?.locked && row.actual!=null)
+    .sort(([a],[b])=>b.localeCompare(a))[0];
+  if(priorEod) return {amount:Number(priorEod[1].actual)||0,label:`Latest reconciled day (${priorEod[0]}) actual cash counted`,locked:true};
+
+  // Last-resort fallback for a closed shift that predates snapshot history.
+  const previousShift=(SHIFTS||[])
+    .filter(s=>s.businessDate<dateKey && s.status==='Closed' && s.actualCashCounted!=null)
+    .sort((a,b)=>b.businessDate.localeCompare(a.businessDate)||b.shiftNumber-a.shiftNumber)[0];
+  if(previousShift) return {amount:Number(previousShift.actualCashCounted)||0,label:`Latest closed shift (${previousShift.businessDate}) actual cash counted`,locked:true};
+
   return {amount:0,label:'No previous closing cash found — enter the starting drawer cash.',locked:false};
 }
 function isWithinShift(timestamp,shift,endIso=null){
