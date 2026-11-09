@@ -1551,6 +1551,35 @@ async function reopenShift(id){
     document.querySelectorAll('[data-reopen-shift]').forEach(b=>b.disabled=false);
   }
 }
+async function correctShiftOpeningCash(shift){
+  if(!isSuperuser()){toast('Only superusers can correct opening cash.');return;}
+  if(!shift||shift.status!=='Open'||shift.businessDate!==businessDayKey()||Number(shift.openingCash)!==0)return;
+  openModal(`<div class="modal-head"><h3>Correct Opening Cash</h3><div class="msub">${esc(shift.shiftName)} · ${esc(shift.businessDate)}</div></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">The system will use the latest valid, non-voided prior reconciliation snapshot and record this correction in the audit log.</div>
+      <div class="field"><label>Correction reason (required)</label><textarea id="shift-opening-correction-reason" rows="3" placeholder="Explain why the opening cash needs correction"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" id="shift-opening-correction-cancel">Cancel</button><button class="btn btn-primary" id="shift-opening-correction-save">Apply correction</button></div>`);
+  document.getElementById('shift-opening-correction-cancel').onclick=closeModal;
+  document.getElementById('shift-opening-correction-save').onclick=async()=>{
+    const reason=document.getElementById('shift-opening-correction-reason')?.value.trim()||'';
+    if(!reason){toast('Enter a correction reason.');return;}
+    const save=document.getElementById('shift-opening-correction-save');
+    if(save)save.disabled=true;
+    try{
+      const res=await posApi('/rest/v1/rpc/correct_hibi_shift_opening_cash',{method:'POST',body:JSON.stringify({p_shift_id:shift.id,p_reason:reason})});
+      const row=await res.json();
+      if(!row?.id||Number(row.opening_cash)<=0)throw new Error('The database did not confirm the corrected opening cash.');
+      const index=SHIFTS.findIndex(x=>x.id===shift.id);
+      if(index>=0)SHIFTS[index]=mapShiftRow(row);
+      closeModal();renderShiftsPage();renderDashboard();renderPOS();
+      toast('Opening cash corrected to '+PESO(Number(row.opening_cash))+'. Audit log updated.');
+    }catch(e){
+      if(save)save.disabled=false;
+      toast('Opening cash was NOT changed: '+(e?.message||e));
+    }
+  };
+}
 function lastShiftActualForDate(dateKey){ const s=lastClosedShiftForDate(dateKey); return s?.actualCashCounted==null?null:Number(s.actualCashCounted); }
 function renderShiftsPage(){
   const el=document.getElementById('shifts-content'); if(!el)return;
@@ -1560,8 +1589,9 @@ function renderShiftsPage(){
   const live=open?shiftFinancialSummary(open):null;
   el.innerHTML=`<div class="page-title"><div><h1>Shift / Drawer</h1><div class="psub">Open, hand off and reconcile the cash drawer by shift.</div></div>${dateKey===businessDayKey()||(isSuperuser()&&open)?`<button class="btn ${open?'btn-secondary':'btn-primary'}" id="shift-main-action">${open?'Close '+esc(open.shiftName):'+ Open Shift'}</button>`:''}</div>
     ${isSuperuser()?`<div class="filter-bar"><button class="filter-btn" id="shift-prev">←</button><input type="date" id="shift-date" value="${dateKey}"><button class="filter-btn" id="shift-next">→</button><button class="filter-btn ${dateKey===businessDayKey()?'active':''}" id="shift-today">Today</button></div>`:`<div class="filter-bar"><span class="filter-btn active">Today · ${dateKey}</span></div>`}
-    ${open?`<div class="card shift-live" style="padding:18px 20px;margin-bottom:16px;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;"><div><div class="section-title" style="margin-bottom:3px;">${esc(open.shiftName)} <span class="shift-status-pill">OPEN</span></div><div style="font-size:12px;color:var(--text-dim);">Opened ${fmtShiftTime(open.openedAt)} · Opened by <strong>${esc(open.openedBy)}</strong></div></div><div style="font-weight:800;font-size:22px;">${PESO(live.expected)}</div></div><div class="stat-grid" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));"><div><div class="slabel">Opening</div><div style="font-weight:700;">${PESO(open.openingCash)}</div></div><div><div class="slabel">Cash Sales</div><div style="font-weight:700;">${PESO(live.cashSales)}</div></div><div><div class="slabel">Orders</div><div style="font-weight:700;">${live.transactionCount}</div></div><div><div class="slabel">Cups Sold</div><div style="font-weight:700;">${live.cupsSold}</div></div><div><div class="slabel">Cash In / Out</div><div style="font-weight:700;">+${PESO(live.cashIn)} / −${PESO(live.cashOut)}</div></div><div><div class="slabel">Cash Expenses</div><div style="font-weight:700;">${PESO(live.expenses)}</div></div><div><div class="slabel">Expected Drawer</div><div style="font-weight:800;">${PESO(live.expected)}</div></div></div></div>`:`<div class="card" style="padding:18px 20px;margin-bottom:16px;"><span class="shift-status-pill none">NO OPEN SHIFT</span><div style="margin-top:8px;font-size:13px;color:var(--text-dim);">${dateKey===businessDayKey()?'Open a shift before taking orders or recording drawer activity.':'No open shift for this business day.'}</div></div>`}
+    ${open?`<div class="card shift-live" style="padding:18px 20px;margin-bottom:16px;"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;"><div><div class="section-title" style="margin-bottom:3px;">${esc(open.shiftName)} <span class="shift-status-pill">OPEN</span></div><div style="font-size:12px;color:var(--text-dim);">Opened ${fmtShiftTime(open.openedAt)} · Opened by <strong>${esc(open.openedBy)}</strong></div>${isSuperuser()&&dateKey===businessDayKey()&&Number(open.openingCash)===0?'<button type="button" class="btn btn-secondary" id="correct-shift-opening-btn" style="margin-top:10px;">Correct opening cash</button>':''}</div><div style="font-weight:800;font-size:22px;">${PESO(live.expected)}</div></div><div class="stat-grid" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));"><div><div class="slabel">Opening</div><div style="font-weight:700;">${PESO(open.openingCash)}</div></div><div><div class="slabel">Cash Sales</div><div style="font-weight:700;">${PESO(live.cashSales)}</div></div><div><div class="slabel">Orders</div><div style="font-weight:700;">${live.transactionCount}</div></div><div><div class="slabel">Cups Sold</div><div style="font-weight:700;">${live.cupsSold}</div></div><div><div class="slabel">Cash In / Out</div><div style="font-weight:700;">+${PESO(live.cashIn)} / −${PESO(live.cashOut)}</div></div><div><div class="slabel">Cash Expenses</div><div style="font-weight:700;">${PESO(live.expenses)}</div></div><div><div class="slabel">Expected Drawer</div><div style="font-weight:800;">${PESO(live.expected)}</div></div></div></div>`:`<div class="card" style="padding:18px 20px;margin-bottom:16px;"><span class="shift-status-pill none">NO OPEN SHIFT</span><div style="margin-top:8px;font-size:13px;color:var(--text-dim);">${dateKey===businessDayKey()?'Open a shift before taking orders or recording drawer activity.':'No open shift for this business day.'}</div></div>`}
     <div class="card" style="overflow-x:auto;"><table><thead><tr><th>Shift</th><th>Status</th><th>Opened By</th><th>Opened</th><th>Closed</th><th class="num">Orders</th><th class="num">Cups</th><th class="num">Opening</th><th class="num">Expected</th><th class="num">Actual</th><th class="num">Variance</th>${isSuperuser()?'<th>Action</th>':''}</tr></thead><tbody>${rows.length?rows.map(s=>{const ss=shiftFinancialSummary(s);const orderCount=ss.transactionCount;const cups=ss.cupsSold;return `<tr><td><b>${esc(s.shiftName)}</b><div style="font-size:11px;color:var(--text-dim);">#${s.shiftNumber}</div></td><td><span class="shift-status-pill ${s.status==='Closed'?'closed':''}">${s.status.toUpperCase()}</span></td><td>${esc(s.openedBy||'—')}</td><td>${fmtShiftTime(s.openedAt)}</td><td>${fmtShiftTime(s.closedAt)}</td><td class="num">${orderCount||0}</td><td class="num">${cups||0}</td><td class="num">${PESO(s.openingCash)}</td><td class="num">${s.status==='Open'&&ss?PESO(ss.expected):(s.expectedCash==null?'—':PESO(s.expectedCash))}</td><td class="num">${s.actualCashCounted==null?'—':PESO(s.actualCashCounted)}</td><td class="num" style="${s.variance!=null&&Math.abs(s.variance)>=.005?'color:var(--rust);font-weight:700;':''}">${s.variance==null?'—':PESO(s.variance)}</td>${isSuperuser()?`<td>${s.status==='Closed'?`<button type="button" class="btn btn-secondary" data-reopen-shift="${escAttr(s.id)}">Reopen Shift</button>`:'—'}</td>`:''}</tr>`}).join(''):`<tr><td colspan="${isSuperuser()?12:11}"><div class="empty-state">No shifts recorded for this day.</div></td></tr>`}</tbody></table></div>`;
+  document.getElementById('correct-shift-opening-btn')?.addEventListener('click',()=>correctShiftOpeningCash(open));
   el.querySelectorAll('[data-reopen-shift]').forEach(b=>b.onclick=()=>reopenShift(b.dataset.reopenShift));
   const action=document.getElementById('shift-main-action'); if(action) action.onclick=()=>open?openCloseShiftModal(open):openShiftModal();
   document.getElementById('shift-prev')?.addEventListener('click',()=>{shiftsFilterDate=shiftCalendarDate(dateKey,-1);renderShiftsPage();});
