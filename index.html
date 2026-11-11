@@ -1510,18 +1510,37 @@ function openCloseShiftModal(shift){
   const refresh=()=>{const a=Number(actualInput.value);preview.textContent=actualInput.value===''?'':`Variance: ${PESO(a-summary.expected)} ${Math.abs(a-summary.expected)<.005?'✓':'(over / short)'}`;};
   actualInput.oninput=refresh;
   document.getElementById('shift-close-cancel').onclick=closeModal;
+  let shiftClosePrecheckBusy=false;
   document.getElementById('shift-close-save').onclick=async()=>{
-    if(actualInput.value===''){toast('Enter Actual Cash Counted.');return;}
-    const actual=Number(actualInput.value); if(!Number.isFinite(actual)||actual<0){toast('Enter a valid cash count.');return;}
-    const variance=actual-summary.expected;
-    const reason=document.getElementById('shift-variance-reason').value.trim();
-    if(Math.abs(variance)>=.005&&!reason){toast('Enter a reason for the cash variance.');return;}
+    const closeBtn=document.getElementById('shift-close-save');
+    if(shiftClosePrecheckBusy) return;
+    shiftClosePrecheckBusy=true; closeBtn.disabled=true;
+    // Refresh live orders before closing so a newly placed order cannot be missed.
+    try{ await loadPosOrders(); }
+    catch(loadError){
+      shiftClosePrecheckBusy=false; closeBtn.disabled=false;
+      toast('Could not verify the latest orders. Shift was NOT closed: '+(loadError?.message||loadError));
+      return;
+    }
     const finalClosedAt=new Date().toISOString();
+    const pendingOrders=ORDERS.filter(o=>o.date===shift.businessDate&&isWithinShift(o.timestamp,shift,finalClosedAt)&&!['Completed','Cancelled'].includes(o.status));
+    if(pendingOrders.length){
+      shiftClosePrecheckBusy=false; closeBtn.disabled=false;
+      const pendingList=pendingOrders.slice(0,12).map(o=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--cream-dim);"><strong>${esc(o.orderNumber||'Order')}</strong><span>${esc(o.source||'Walk-in')} · ${esc(o.status||'Pending')}</span></div>`).join('');
+      const remaining=pendingOrders.length>12?`<div style="font-size:12px;color:var(--text-dim);margin-top:8px;">And ${pendingOrders.length-12} more pending order(s).</div>`:'';
+      openModal(`<div class="modal-head"><h3>Orders Still Pending</h3><div class="msub">${esc(shift.shiftName)} cannot be closed yet.</div></div><div class="modal-body"><p style="margin:0 0 10px;font-size:13px;">There ${pendingOrders.length===1?'is':'are'} <strong>${pendingOrders.length} pending order(s)</strong> from this shift. Complete or cancel them before closing the shift.</p>${pendingList}${remaining}<p style="font-size:12px;color:var(--text-dim);margin:12px 0 0;">No orders have been changed automatically. Resolve them in Orders, then return and click Close Shift again.</p></div><div class="modal-foot"><button class="btn btn-secondary" id="pending-shift-cancel">Stay here</button><button class="btn btn-primary" id="pending-shift-orders">Go to Orders</button></div>`);
+      document.getElementById('pending-shift-cancel').onclick=closeModal;
+      document.getElementById('pending-shift-orders').onclick=()=>{closeModal();if(isSuperuser()){ordersFilter.mode='date';ordersFilter.date=shift.businessDate;}goToPage('orders');};
+      return;
+    }
+    if(actualInput.value===''){shiftClosePrecheckBusy=false;closeBtn.disabled=false;toast('Enter Actual Cash Counted.');return;}
+    const actual=Number(actualInput.value); if(!Number.isFinite(actual)||actual<0){shiftClosePrecheckBusy=false;closeBtn.disabled=false;toast('Enter a valid cash count.');return;}
+    const reason=document.getElementById('shift-variance-reason').value.trim();
     const finalSummary=shiftFinancialSummary(shift,finalClosedAt);
     const finalVariance=actual-finalSummary.expected;
-    if(Math.abs(finalVariance)>=.005&&!reason){toast('Enter a reason for the cash variance.');return;}
+    if(Math.abs(finalVariance)>=.005&&!reason){shiftClosePrecheckBusy=false;closeBtn.disabled=false;toast('Enter a reason for the cash variance.');return;}
     const closed={...shift,status:'Closed',closedAt:finalClosedAt,closedBy:currentActor(),expectedCash:finalSummary.expected,actualCashCounted:actual,variance:finalVariance,varianceReason:reason,cashSales:finalSummary.cashSales,gcashSales:finalSummary.gcashSales,grabSales:finalSummary.grabSales,cashIn:finalSummary.cashIn,cashOut:finalSummary.cashOut,expenses:finalSummary.expenses,transactionCount:finalSummary.transactionCount,cupsSold:finalSummary.cupsSold};
-    try{await saveShiftRecord(closed);const i=SHIFTS.findIndex(x=>x.id===shift.id);if(i>=0)SHIFTS[i]=closed;await writeAudit('close_shift','cash_shift',shift.id,reason,{businessDate:shift.businessDate,shiftNumber:shift.shiftNumber,expectedCash:finalSummary.expected,actualCashCounted:actual,variance:finalVariance,cashSales:finalSummary.cashSales,cashIn:finalSummary.cashIn,cashOut:finalSummary.cashOut,expenses:finalSummary.expenses,transactionCount:finalSummary.transactionCount,cupsSold:finalSummary.cupsSold});closeModal();renderShiftsPage();renderDashboard();renderPOS();toast(`${shift.shiftName} closed.`);}catch(e){toast('Shift was NOT closed: '+(e?.message||e));}
+    try{await saveShiftRecord(closed);const i=SHIFTS.findIndex(x=>x.id===shift.id);if(i>=0)SHIFTS[i]=closed;await writeAudit('close_shift','cash_shift',shift.id,reason,{businessDate:shift.businessDate,shiftNumber:shift.shiftNumber,expectedCash:finalSummary.expected,actualCashCounted:actual,variance:finalVariance,cashSales:finalSummary.cashSales,cashIn:finalSummary.cashIn,cashOut:finalSummary.cashOut,expenses:finalSummary.expenses,transactionCount:finalSummary.transactionCount,cupsSold:finalSummary.cupsSold});closeModal();renderShiftsPage();renderDashboard();renderPOS();toast(`${shift.shiftName} closed.`);}catch(e){shiftClosePrecheckBusy=false;closeBtn.disabled=false;toast('Shift was NOT closed: '+(e?.message||e));}
   };
 }
 let shiftReopenBusy = false;
@@ -3519,8 +3538,8 @@ async function renderReports(){
   document.getElementById('monthly-performance-content').style.display=monthly?'':'none';
   if(!isSuperuser()) document.getElementById('monthly-performance-content').replaceChildren();
   if(monthly){ renderMonthlyPerformance(); return; }
-  let orders = ordersForReportFilter();
-  let m = computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
+  const orders = ordersForReportFilter();
+  const m = computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
   [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
   const expenses = filteredExpenses(reportsFilter).filter(x=>x.status!=='Voided');
   const expenseTotal = expenses.reduce((s,x)=>s+Number(x.amount||0),0);
@@ -3736,38 +3755,7 @@ async function renderReports(){
   el.querySelector('#eod-actual').addEventListener('input', recalcEod);
   const saveBtn = el.querySelector('#eod-save');
   if(saveBtn && !saveBtn.disabled){
-    let reconciliationPrecheckBusy=false;
     saveBtn.onclick = async ()=>{
-      if(reconciliationPrecheckBusy) return;
-      reconciliationPrecheckBusy=true;
-      saveBtn.disabled=true;
-      // Refresh from Supabase immediately before reconciliation so newly placed
-      // or recently updated orders cannot be missed by a stale browser view.
-      try{ await loadPosOrders(); }
-      catch(loadError){
-        reconciliationPrecheckBusy=false; saveBtn.disabled=false;
-        toast('Could not verify the latest orders. Reconciliation was NOT saved: '+(loadError?.message||loadError));
-        return;
-      }
-      const pendingOrders=ORDERS.filter(o=>o.date===selectedEodDate && !['Completed','Cancelled'].includes(o.status));
-      if(pendingOrders.length){
-        reconciliationPrecheckBusy=false; saveBtn.disabled=false;
-        const pendingList=pendingOrders.slice(0,12).map(o=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--cream-dim);"><strong>${esc(o.orderNumber||'Order')}</strong><span>${esc(o.source||'Walk-in')} · ${esc(o.status||'Pending')}</span></div>`).join('');
-        const remaining=pendingOrders.length>12?`<div style="font-size:12px;color:var(--text-dim);margin-top:8px;">And ${pendingOrders.length-12} more pending order(s).</div>`:'';
-        openModal(`<div class="modal-head"><h3>Orders Still Pending</h3><div class="msub">Reconciliation is paused for ${esc(selectedEodDate)}.</div></div><div class="modal-body"><p style="margin:0 0 10px;font-size:13px;">There ${pendingOrders.length===1?'is':'are'} <strong>${pendingOrders.length} order(s)</strong> that must be completed or cancelled before reconciliation can continue.</p>${pendingList}${remaining}<p style="font-size:12px;color:var(--text-dim);margin:12px 0 0;">No orders have been changed automatically. Resolve each order in the Orders page, then return and click Reconciliation again.</p></div><div class="modal-foot"><button class="btn btn-secondary" id="pending-reconcile-cancel">Stay here</button><button class="btn btn-primary" id="pending-reconcile-orders">Go to Orders</button></div>`);
-        document.getElementById('pending-reconcile-cancel').onclick=closeModal;
-        document.getElementById('pending-reconcile-orders').onclick=()=>{
-          closeModal();
-          if(isSuperuser()){ordersFilter.mode='date';ordersFilter.date=selectedEodDate;}
-          goToPage('orders');
-        };
-        return;
-      }
-      // Use the freshly loaded orders for all reconciliation totals and reports.
-      orders=ordersForReportFilter();
-      m=computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
-      [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
-      recalcEod();
       const opening = parseFloat(document.getElementById('eod-opening').value)||0;
       const actualValue = document.getElementById('eod-actual').value;
       const actual = actualValue==='' ? null : parseFloat(actualValue);
@@ -3777,14 +3765,14 @@ async function renderReports(){
       const variance = actual===null ? null : actual - expected;
       const varianceReason=(document.getElementById('eod-variance-reason')?.value||'').trim();
       const dateKey = selectedEodDate || (reportsFilter.mode==='date' ? reportsFilter.date : todayStr());
-      if(openShiftForDate(dateKey)){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Close the open shift before saving EOD reconciliation.'); return; }
-      if(!isSuperuser() && dateKey!==businessDayKey()){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Past-date reconciliation is not allowed.'); return; }
-      if(isDateLocked(dateKey) && !isSuperuser()){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast(`${dateKey} is already reconciled and locked.`); return; }
-      if(actual===null){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Enter Actual Cash Counted before saving reconciliation.'); return; }
-      if(variance!==null && Math.abs(variance)>=0.005 && !varianceReason){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Please enter a reason for the cash variance.'); return; }
+      if(openShiftForDate(dateKey)){ toast('Close the open shift before saving EOD reconciliation.'); return; }
+      if(!isSuperuser() && dateKey!==businessDayKey()){ toast('Past-date reconciliation is not allowed.'); return; }
+      if(isDateLocked(dateKey) && !isSuperuser()){ toast(`${dateKey} is already reconciled and locked.`); return; }
+      if(actual===null){ toast('Enter Actual Cash Counted before saving reconciliation.'); return; }
+      if(variance!==null && Math.abs(variance)>=0.005 && !varianceReason){ toast('Please enter a reason for the cash variance.'); return; }
       const reconciliation={...(EOD[dateKey]||{}),opening,actual,expected,variance,totalCashSales:cashSales,cashIn:drawerTotals.in,cashOut:drawerTotals.out,totalGcashSales:gcashSales,totalExpenses:expenseTotal,varianceReason,locked:true,reconciledAt:new Date().toISOString(),reconciledBy:(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff')};
       try{ await saveEodRecord(dateKey,reconciliation); EOD[dateKey]=reconciliation; }
-      catch(e){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Reconciliation was NOT saved: '+(e?.message||'database error')); return; }
+      catch(e){ toast('Reconciliation was NOT saved: '+(e?.message||'database error')); return; }
       // Create a new snapshot after every successfully saved reconciliation, including staff reconciliations
       // and superuser re-reconciliations after an unlock. Snapshot failure does not undo reconciliation.
       let reconciliationSnapshotError=null;
