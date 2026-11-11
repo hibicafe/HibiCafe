@@ -3767,6 +3767,7 @@ async function renderReports(){
       orders=ordersForReportFilter();
       m=computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
       [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
+      recalcEod();
       const opening = parseFloat(document.getElementById('eod-opening').value)||0;
       const actualValue = document.getElementById('eod-actual').value;
       const actual = actualValue==='' ? null : parseFloat(actualValue);
