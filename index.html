@@ -3776,11 +3776,11 @@ async function renderReports(){
       const variance = actual===null ? null : actual - expected;
       const varianceReason=(document.getElementById('eod-variance-reason')?.value||'').trim();
       const dateKey = selectedEodDate || (reportsFilter.mode==='date' ? reportsFilter.date : todayStr());
-      if(openShiftForDate(dateKey)){ toast('Close the open shift before saving EOD reconciliation.'); return; }
-      if(!isSuperuser() && dateKey!==businessDayKey()){ toast('Past-date reconciliation is not allowed.'); return; }
-      if(isDateLocked(dateKey) && !isSuperuser()){ toast(`${dateKey} is already reconciled and locked.`); return; }
-      if(actual===null){ toast('Enter Actual Cash Counted before saving reconciliation.'); return; }
-      if(variance!==null && Math.abs(variance)>=0.005 && !varianceReason){ toast('Please enter a reason for the cash variance.'); return; }
+      if(openShiftForDate(dateKey)){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Close the open shift before saving EOD reconciliation.'); return; }
+      if(!isSuperuser() && dateKey!==businessDayKey()){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Past-date reconciliation is not allowed.'); return; }
+      if(isDateLocked(dateKey) && !isSuperuser()){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast(`${dateKey} is already reconciled and locked.`); return; }
+      if(actual===null){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Enter Actual Cash Counted before saving reconciliation.'); return; }
+      if(variance!==null && Math.abs(variance)>=0.005 && !varianceReason){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Please enter a reason for the cash variance.'); return; }
       const reconciliation={...(EOD[dateKey]||{}),opening,actual,expected,variance,totalCashSales:cashSales,cashIn:drawerTotals.in,cashOut:drawerTotals.out,totalGcashSales:gcashSales,totalExpenses:expenseTotal,varianceReason,locked:true,reconciledAt:new Date().toISOString(),reconciledBy:(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff')};
       try{ await saveEodRecord(dateKey,reconciliation); EOD[dateKey]=reconciliation; }
       catch(e){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Reconciliation was NOT saved: '+(e?.message||'database error')); return; }
