@@ -3519,8 +3519,8 @@ async function renderReports(){
   document.getElementById('monthly-performance-content').style.display=monthly?'':'none';
   if(!isSuperuser()) document.getElementById('monthly-performance-content').replaceChildren();
   if(monthly){ renderMonthlyPerformance(); return; }
-  const orders = ordersForReportFilter();
-  const m = computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
+  let orders = ordersForReportFilter();
+  let m = computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
   [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
   const expenses = filteredExpenses(reportsFilter).filter(x=>x.status!=='Voided');
   const expenseTotal = expenses.reduce((s,x)=>s+Number(x.amount||0),0);
@@ -3736,7 +3736,37 @@ async function renderReports(){
   el.querySelector('#eod-actual').addEventListener('input', recalcEod);
   const saveBtn = el.querySelector('#eod-save');
   if(saveBtn && !saveBtn.disabled){
+    let reconciliationPrecheckBusy=false;
     saveBtn.onclick = async ()=>{
+      if(reconciliationPrecheckBusy) return;
+      reconciliationPrecheckBusy=true;
+      saveBtn.disabled=true;
+      // Refresh from Supabase immediately before reconciliation so newly placed
+      // or recently updated orders cannot be missed by a stale browser view.
+      try{ await loadPosOrders(); }
+      catch(loadError){
+        reconciliationPrecheckBusy=false; saveBtn.disabled=false;
+        toast('Could not verify the latest orders. Reconciliation was NOT saved: '+(loadError?.message||loadError));
+        return;
+      }
+      const pendingOrders=ORDERS.filter(o=>o.date===selectedEodDate && !['Completed','Cancelled'].includes(o.status));
+      if(pendingOrders.length){
+        reconciliationPrecheckBusy=false; saveBtn.disabled=false;
+        const pendingList=pendingOrders.slice(0,12).map(o=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--cream-dim);"><strong>${esc(o.orderNumber||'Order')}</strong><span>${esc(o.source||'Walk-in')} · ${esc(o.status||'Pending')}</span></div>`).join('');
+        const remaining=pendingOrders.length>12?`<div style="font-size:12px;color:var(--text-dim);margin-top:8px;">And ${pendingOrders.length-12} more pending order(s).</div>`:'';
+        openModal(`<div class="modal-head"><h3>Orders Still Pending</h3><div class="msub">Reconciliation is paused for ${esc(selectedEodDate)}.</div></div><div class="modal-body"><p style="margin:0 0 10px;font-size:13px;">There ${pendingOrders.length===1?'is':'are'} <strong>${pendingOrders.length} order(s)</strong> that must be completed or cancelled before reconciliation can continue.</p>${pendingList}${remaining}<p style="font-size:12px;color:var(--text-dim);margin:12px 0 0;">No orders have been changed automatically. Resolve each order in the Orders page, then return and click Reconciliation again.</p></div><div class="modal-foot"><button class="btn btn-secondary" id="pending-reconcile-cancel">Stay here</button><button class="btn btn-primary" id="pending-reconcile-orders">Go to Orders</button></div>`);
+        document.getElementById('pending-reconcile-cancel').onclick=closeModal;
+        document.getElementById('pending-reconcile-orders').onclick=()=>{
+          closeModal();
+          if(isSuperuser()){ordersFilter.mode='date';ordersFilter.date=selectedEodDate;}
+          goToPage('orders');
+        };
+        return;
+      }
+      // Use the freshly loaded orders for all reconciliation totals and reports.
+      orders=ordersForReportFilter();
+      m=computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
+      [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
       const opening = parseFloat(document.getElementById('eod-opening').value)||0;
       const actualValue = document.getElementById('eod-actual').value;
       const actual = actualValue==='' ? null : parseFloat(actualValue);
@@ -3753,7 +3783,7 @@ async function renderReports(){
       if(variance!==null && Math.abs(variance)>=0.005 && !varianceReason){ toast('Please enter a reason for the cash variance.'); return; }
       const reconciliation={...(EOD[dateKey]||{}),opening,actual,expected,variance,totalCashSales:cashSales,cashIn:drawerTotals.in,cashOut:drawerTotals.out,totalGcashSales:gcashSales,totalExpenses:expenseTotal,varianceReason,locked:true,reconciledAt:new Date().toISOString(),reconciledBy:(CURRENT_PROFILE?.display_name||CURRENT_PROFILE?.username||'Staff')};
       try{ await saveEodRecord(dateKey,reconciliation); EOD[dateKey]=reconciliation; }
-      catch(e){ toast('Reconciliation was NOT saved: '+(e?.message||'database error')); return; }
+      catch(e){ reconciliationPrecheckBusy=false; saveBtn.disabled=false; toast('Reconciliation was NOT saved: '+(e?.message||'database error')); return; }
       // Create a new snapshot after every successfully saved reconciliation, including staff reconciliations
       // and superuser re-reconciliations after an unlock. Snapshot failure does not undo reconciliation.
       let reconciliationSnapshotError=null;
