@@ -1291,8 +1291,13 @@ function mapAvailabilityRow(row){
 }
 function isProductSoldOut(pr,dateKey=businessDayKey()){
   if(!pr) return false;
+  // A manual Sold Out flag always wins, even when ingredients are in stock.
   const a=PRODUCT_AVAILABILITY[pr.id];
-  return !!(a && a.status==='SoldOut');
+  if(a && a.status==='SoldOut') return true;
+  // Otherwise, a product is sold out when every size/variant is blocked by its recipe stock.
+  // Products without configured sizes keep their existing availability behavior.
+  const sizes=Object.keys(pr.sizes||{});
+  return sizes.length>0 && sizes.every(size=>!inventoryVariantAvailable(pr.id,size));
 }
 function sortProductsAvailability(items){
   return items.map((pr,index)=>({pr,index,soldOut:isProductSoldOut(pr)}))
