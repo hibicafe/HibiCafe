@@ -1720,7 +1720,7 @@ let LIVE_AVAILABILITY_REFRESH_TIMER = null;
 let LIVE_SHARED_REFRESH_TIMER = null;
 let LIVE_ORDER_REFRESHING = false;
 let LIVE_SHARED_REFRESHING = false;
-let LIVE_ORDER_SOUND_ENABLED = false;
+const LIVE_ORDER_SOUND_ENABLED = true;
 let LIVE_ORDER_AUDIO_CONTEXT = null;
 let LIVE_ORDER_REMINDER_TIMER = null;
 let LIVE_SEEN_ONLINE_ORDER_IDS = new Set();
@@ -1731,19 +1731,19 @@ function pendingOnlineOrders(){
 }
 function syncOnlineOrderReminder(){
   const hasPending=pendingOnlineOrders().length>0;
-  if(!LIVE_ORDER_SOUND_ENABLED||!hasPending){
+  if(!hasPending){
     if(LIVE_ORDER_REMINDER_TIMER){clearInterval(LIVE_ORDER_REMINDER_TIMER);LIVE_ORDER_REMINDER_TIMER=null;}
     return;
   }
   if(!LIVE_ORDER_REMINDER_TIMER){
     LIVE_ORDER_REMINDER_TIMER=setInterval(()=>{
-      if(!CURRENT_USER||!LIVE_ORDER_SOUND_ENABLED||!pendingOnlineOrders().length){syncOnlineOrderReminder();return;}
+      if(!CURRENT_USER||!pendingOnlineOrders().length){syncOnlineOrderReminder();return;}
       playOnlineOrderAlert();
     },30000);
   }
 }
 function playOnlineOrderAlert(force=false){
-  if(!LIVE_ORDER_SOUND_ENABLED&&!force)return;
+  
   try{
     const AudioCtx=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtx)return;
@@ -3003,7 +3003,7 @@ function renderStaffDashboard(){
       </div>
     </div>
     <div class="card staff-preparing-card" style="margin-bottom:16px;">
-      <div class="staff-preparing-head"><div><div class="section-title" style="margin:0;">New Online Orders</div><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Review incoming online orders and verify payment before preparation.</div></div><div style="display:flex;align-items:center;gap:8px;"><button class="icon-btn" id="staff-sound-toggle" type="button" aria-pressed="${LIVE_ORDER_SOUND_ENABLED}">${LIVE_ORDER_SOUND_ENABLED?'Sound on':'Enable sound'}</button><span class="staff-preparing-count">${ORDERS.filter(o=>o.date===dateKey&&o.source==='Online'&&o.status==='New').length}</span></div></div>
+      <div class="staff-preparing-head"><div><div class="section-title" style="margin:0;">New Online Orders</div><div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Review incoming online orders and verify payment before preparation.</div></div><div style="display:flex;align-items:center;gap:8px;"><span class="staff-preparing-count">${ORDERS.filter(o=>o.date===dateKey&&o.source==='Online'&&o.status==='New').length}</span></div></div>
       <table id="staff-online-table">
         <thead><tr><th>Order #</th><th>Date</th><th>Time</th><th>Items</th><th>Payment</th><th class="num">Total</th><th>Status</th><th>Cashier</th><th>Actions</th></tr></thead>
         <tbody>${ORDERS.filter(o=>o.date===dateKey&&o.source==='Online'&&o.status==='New').sort((a,b)=>(Date.parse(b.timestamp)||0)-(Date.parse(a.timestamp)||0)).map(o=>orderTableRows(o)).join('')||`<tr><td colspan="9"><div class="empty-state">No new online orders.</div></td></tr>`}</tbody>
@@ -3021,21 +3021,6 @@ function renderStaffDashboard(){
   document.getElementById('staff-expense').onclick=()=>{if(requireOpenShift(dateKey))openAddExpenseModal();};
   document.getElementById('staff-shifts').onclick=()=>goToPage('shifts');
   document.getElementById('staff-report').onclick=()=>goToPage('reports');
-  const soundToggle=document.getElementById('staff-sound-toggle');
-  if(soundToggle)soundToggle.onclick=()=>{
-    LIVE_ORDER_SOUND_ENABLED=!LIVE_ORDER_SOUND_ENABLED;
-    if(LIVE_ORDER_SOUND_ENABLED){
-      try{const AudioCtx=window.AudioContext||window.webkitAudioContext;if(AudioCtx){if(!LIVE_ORDER_AUDIO_CONTEXT)LIVE_ORDER_AUDIO_CONTEXT=new AudioCtx();LIVE_ORDER_AUDIO_CONTEXT.resume();}}catch(e){}
-      playOnlineOrderAlert(true);
-      syncOnlineOrderReminder();
-      soundToggle.textContent='Sound on';soundToggle.setAttribute('aria-pressed','true');
-      toast(pendingOnlineOrders().length?'Sound enabled. Unacknowledged online orders will alert every 30 seconds.':'Sound alerts enabled for new online orders.');
-    }else{
-      syncOnlineOrderReminder();
-      soundToggle.textContent='Enable sound';soundToggle.setAttribute('aria-pressed','false');
-      toast('Sound alerts disabled.');
-    }
-  };
   const onlineTable=document.getElementById('staff-online-table');
   onlineTable.querySelectorAll('[data-toggle-order]').forEach(btn=>btn.onclick=(event)=>{
     event.stopPropagation();
