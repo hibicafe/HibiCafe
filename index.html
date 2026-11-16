@@ -1739,7 +1739,7 @@ function syncOnlineOrderReminder(){
     LIVE_ORDER_REMINDER_TIMER=setInterval(()=>{
       if(!CURRENT_USER||!LIVE_ORDER_SOUND_ENABLED||!pendingOnlineOrders().length){syncOnlineOrderReminder();return;}
       playOnlineOrderAlert();
-    },120000);
+    },30000);
   }
 }
 function playOnlineOrderAlert(force=false){
@@ -1751,14 +1751,29 @@ function playOnlineOrderAlert(force=false){
     const ctx=LIVE_ORDER_AUDIO_CONTEXT;
     if(ctx.state==='suspended')ctx.resume();
     const now=ctx.currentTime;
-    // A louder, distinctive three-note alert with two quick bursts.
-    [740,988,1318,740,988,1318].forEach((frequency,i)=>{
-      const start=now+i*0.19+(i>=3?0.28:0),osc=ctx.createOscillator(),gain=ctx.createGain();
-      osc.type='triangle';osc.frequency.value=frequency;
+    // A recognisable Hibi-style five-note chime, with a warm supporting harmony.
+    // Staggered notes and changing timbre make this distinct from a single beep.
+    const notes=[
+      {f:587.33,t:0,d:0.34,w:'sine'},
+      {f:783.99,t:0.16,d:0.38,w:'triangle'},
+      {f:987.77,t:0.36,d:0.42,w:'sine'},
+      {f:1174.66,t:0.58,d:0.62,w:'triangle'},
+      {f:783.99,t:1.02,d:0.48,w:'sine'}
+    ];
+    notes.forEach((note)=>{
+      const start=now+note.t,osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type=note.w;osc.frequency.setValueAtTime(note.f,start);
       gain.gain.setValueAtTime(0.0001,start);
-      gain.gain.exponentialRampToValueAtTime(0.38,start+0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001,start+0.22);
-      osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(start+0.23);
+      gain.gain.exponentialRampToValueAtTime(0.22,start+0.035);
+      gain.gain.exponentialRampToValueAtTime(0.0001,start+note.d);
+      osc.connect(gain);gain.connect(ctx.destination);osc.start(start);osc.stop(start+note.d+0.02);
+      const overtone=ctx.createOscillator(),overtoneGain=ctx.createGain();
+      overtone.type='sine';overtone.frequency.setValueAtTime(note.f*2,start);
+      overtoneGain.gain.setValueAtTime(0.0001,start);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.045,start+0.04);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001,start+note.d*0.72);
+      overtone.connect(overtoneGain);overtoneGain.connect(ctx.destination);
+      overtone.start(start);overtone.stop(start+note.d*0.72+0.02);
     });
   }catch(e){console.warn('Online order sound alert could not play:',e);}
 }
@@ -3014,7 +3029,7 @@ function renderStaffDashboard(){
       playOnlineOrderAlert(true);
       syncOnlineOrderReminder();
       soundToggle.textContent='Sound on';soundToggle.setAttribute('aria-pressed','true');
-      toast(pendingOnlineOrders().length?'Sound enabled. Unacknowledged online orders will alert every 2 minutes.':'Sound alerts enabled for new online orders.');
+      toast(pendingOnlineOrders().length?'Sound enabled. Unacknowledged online orders will alert every 30 seconds.':'Sound alerts enabled for new online orders.');
     }else{
       syncOnlineOrderReminder();
       soundToggle.textContent='Enable sound';soundToggle.setAttribute('aria-pressed','false');
