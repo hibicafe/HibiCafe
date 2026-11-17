@@ -344,7 +344,7 @@ async function categoryModal(){
 function movementModal(item){
  if(!item)return;
  const cUnit=consumptionUnit(item),pUnit=purchaseUnit(item),factor=purchaseFactor(item);
- openInventoryView('<div class="modal-head"><h3>Record inventory activity</h3><div class="msub">'+esc(item.name)+' · Current stock: '+formatBalance(item)+'</div></div><div class="modal-body"><div class="inv-modal-grid"><div><label>Activity</label><select id="inv-type"><option value="stock_in">Stock delivery</option><option value="stocktake">Physical stock count</option><option value="adjustment">Adjustment</option><option value="waste">Waste / spoilage</option></select></div><div><label id="inv-qty-label">Quantity ('+unitLabel(pUnit)+')</label><input id="inv-qty" type="number" min="0" step="0.001" placeholder="0"></div><div id="inv-direction-wrap" style="display:none"><label>Adjustment direction</label><select id="inv-direction"><option value="add">Add stock</option><option value="subtract">Subtract stock</option></select></div><div class="wide"><label>Reason <span style="color:#b33">*</span></label><input id="inv-reason" maxlength="250" placeholder="Required for counts, adjustments and waste"></div><div class="wide"><label>Supplier / reference (optional)</label><input id="inv-ref" maxlength="120" placeholder="Supplier or delivery reference"></div></div><div class="inv-sub" style="margin-top:12px" id="inv-movement-help">Enter deliveries in '+unitLabel(pUnit)+'. One '+unitLabel(pUnit)+' = '+fmt(factor)+' '+unitLabel(cUnit)+'.</div></div><div class="modal-foot"><button class="btn btn-secondary" id="inv-cancel">Cancel</button><button class="btn btn-primary" id="inv-submit">Save</button></div>');
+ openInventoryView('<div class="modal-head"><h3>Record inventory activity</h3><div class="msub">'+esc(item.name)+' · Current stock: '+formatBalance(item)+'</div></div><div class="modal-body"><div class="inv-modal-grid"><div><label>Activity</label><select id="inv-type"><option value="stock_in">Stock delivery</option><option value="stocktake">Physical stock count</option><option value="adjustment">Adjustment</option><option value="waste">Waste / spoilage</option></select></div><div><label id="inv-qty-label">Quantity ('+unitLabel(pUnit)+')</label><input id="inv-qty" type="number" min="0" step="0.001" placeholder="0"></div><div id="inv-direction-wrap" style="display:none"><label>Adjustment direction</label><select id="inv-direction"><option value="add">Add stock</option><option value="subtract">Subtract stock</option></select></div><div class="wide"><label>Reason <span style="color:#b33">*</span></label><input id="inv-reason" maxlength="250" placeholder="Required for counts, adjustments and waste"></div><div class="wide"><label>Supplier / reference (optional)</label><input id="inv-ref" maxlength="120" placeholder="Supplier or delivery reference"></div></div><div class="inv-sub" style="margin-top:12px" id="inv-movement-help">Enter deliveries in '+unitLabel(pUnit)+'. One '+unitLabel(pUnit)+' = '+fmt(factor)+' '+unitLabel(cUnit)+'.</div></div><div class="modal-foot"><button class="btn btn-secondary" id="inv-cancel">Cancel</button><button class="btn btn-primary" id="inv-submit">Save</button></div>', 'overview');
  $('inv-cancel').onclick=closeInventoryView;
  const updateType=()=>{
   const type=$('inv-type').value,pack=type==='stock_in'||type==='stocktake';
@@ -365,7 +365,7 @@ function movementModal(item){
    if(result.error){toast(result.error.message);return}
    const data=Array.isArray(result.data)?result.data[0]:result.data,variance=Number(data?.variance)||0;
    await writeAudit('inventory_stock_count','inventory_item',item.id,reason,{system_quantity:data?.system_quantity,actual_quantity:data?.actual_quantity,variance,purchase_unit:pUnit});
-   await load();await stockCountHistoryModal();toast(variance===0?'Stock count recorded. No variance.':'Stock count recorded and balance adjusted.');
+   await load();toast(variance===0?'Stock count recorded. No variance.':'Stock count recorded and balance adjusted.');
    return;
   }
   if(type==='stock_in'){
@@ -377,7 +377,7 @@ function movementModal(item){
    if(r.error){toast(r.error.message);return}
   }
   await writeAudit('inventory_'+type,'inventory_item',item.id,reason,{entered_quantity:n,entered_unit,quantity_delta:type==='stock_in'?baseQuantity:(type==='waste'||$('inv-direction')?.value==='subtract'?-n:n),reference});
-  await load();await historyModal();toast('Inventory activity recorded.');
+  await load();toast('Inventory activity recorded.');
  };
 }
 async function historyModal(){
