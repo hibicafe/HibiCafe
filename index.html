@@ -2214,12 +2214,14 @@ function openProductModal(pr){
     };
     const minus = document.getElementById('qty-minus'), plus=document.getElementById('qty-plus');
     if(minus) minus.onclick=()=>{ if(qty>1) qty--; document.getElementById('qty-n').textContent=qty; };
-    if(plus) plus.onclick=()=>{ qty++; document.getElementById('qty-n').textContent=qty; };
+    if(plus) plus.onclick=()=>{const limit=chosenAddons.size?[...chosenAddons].map(id=>inventoryAddonRemaining(id)).filter(n=>n!==null).reduce((m,n)=>Math.min(m,n),Infinity):Infinity;if(qty>=limit){toast('Selected add-on stock is limited to '+limit+' serving(s).');return;}qty++;document.getElementById('qty-n').textContent=qty;};
     document.querySelectorAll('#addon-list input[type=checkbox]').forEach(cb=>{
       cb.onchange=()=>{if(cb.checked&&!inventoryAddonAvailable(cb.dataset.addon)){cb.checked=false;toast('This add-on is sold out.');return;}cb.checked ? chosenAddons.add(cb.dataset.addon) : chosenAddons.delete(cb.dataset.addon);};
     });
     document.getElementById('modal-add').onclick = ()=>{
       const addonObjs = ADDONS.filter(a=>chosenAddons.has(a.id));
+      const shortAddon=addonObjs.find(a=>{const remaining=inventoryAddonRemaining(a.id);return !inventoryAddonAvailable(a.id)||(remaining!==null&&remaining<qty)});
+      if(shortAddon){toast(shortAddon.name+' has only '+(inventoryAddonRemaining(shortAddon.id)??0)+' left. Reduce the quantity or remove this add-on.');return;}
       if(!inventoryVariantAvailable(pr.id,chosenSize)){toast('This size is unavailable because required ingredients are out of stock.');return;}
       addToCart(pr, chosenSize, addonObjs, qty, freeUpsize);
       closeModal();
