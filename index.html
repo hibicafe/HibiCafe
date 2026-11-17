@@ -902,31 +902,44 @@ let MENU = defaultMenu();
 let ADDONS = defaultAddons();
 let INVENTORY_VARIANT_AVAILABILITY={};
 let INVENTORY_VARIANT_REMAINING={};
+let INVENTORY_ADDON_AVAILABILITY={};
+let INVENTORY_ADDON_REMAINING={};
 let INVENTORY_VARIANT_REFRESHING=false;
 let INVENTORY_VARIANT_CHANNEL=null;
 async function refreshInventoryVariantAvailability(){
  if(INVENTORY_VARIANT_REFRESHING||!supabaseClient)return;
  INVENTORY_VARIANT_REFRESHING=true;
  try{
-  const [rr,br]=await Promise.all([supabaseClient.from('inventory_recipe_lines').select('recipe_type,product_id,product_size,item_id,quantity_per_unit,optional'),supabaseClient.from('inventory_balances').select('item_id,quantity_on_hand')]);
+  const [rr,br]=await Promise.all([supabaseClient.from('inventory_recipe_lines').select('recipe_type,product_id,product_size,addon_id,item_id,quantity_per_unit,optional'),supabaseClient.from('inventory_balances').select('item_id,quantity_on_hand')]);
   if(rr.error)throw rr.error;if(br.error)throw br.error;
-  const balances=new Map((br.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0])),recipes=rr.data||[],next={},remaining={};
+  const balances=new Map((br.data||[]).map(x=>[x.item_id,Number(x.quantity_on_hand)||0])),recipes=rr.data||[],next={},remaining={},addonNext={},addonRemaining={};
+  const calculate=lines=>{
+   if(!lines.length)return {available:true,remaining:null};
+   const required=new Map();
+   for(const line of lines){if(!line.item_id)continue;const prev=required.get(line.item_id)||{qty:0,optional:true};prev.qty+=Number(line.quantity_per_unit)||0;prev.optional=prev.optional&&!!line.optional;required.set(line.item_id,prev)}
+   const mandatory=[...required].filter(([,x])=>!x.optional&&x.qty>0);
+   return {available:[...required].every(([id,x])=>x.optional||x.qty<=0||(balances.get(id)||0)>=x.qty),remaining:mandatory.length?Math.max(0,Math.min(...mandatory.map(([id,x])=>Math.floor(((balances.get(id)||0)+1e-9)/x.qty)))):null};
+  };
   for(const p of (MENU?.products||[])){for(const size of Object.keys(p.sizes||{})){
    const lines=recipes.filter(x=>x.recipe_type==='product'&&x.product_id===String(p.id)&&x.product_size===size);
    if(!lines.length){next[p.id+'|'+size]=true;continue}
-   const required=new Map();for(const line of lines){if(!line.item_id)continue;const prev=required.get(line.item_id)||{qty:0,optional:true};prev.qty+=Number(line.quantity_per_unit)||0;prev.optional=prev.optional&&!!line.optional;required.set(line.item_id,prev)}
-   next[p.id+'|'+size]=[...required].every(([id,x])=>x.optional||(balances.get(id)||0)>=x.qty);
-   const mandatory=[...required].filter(([,x])=>!x.optional&&x.qty>0);
-   remaining[p.id+'|'+size]=mandatory.length?Math.max(0,Math.min(...mandatory.map(([id,x])=>Math.floor(((balances.get(id)||0)+1e-9)/x.qty)))):null;
+   const result=calculate(lines);next[p.id+'|'+size]=result.available;remaining[p.id+'|'+size]=result.remaining;
   }}
-  INVENTORY_VARIANT_AVAILABILITY=next;
-  INVENTORY_VARIANT_REMAINING=remaining;
+  for(const addon of (ADDONS||[])){
+   const lines=recipes.filter(x=>x.recipe_type==='addon'&&String(x.addon_id)===String(addon.id));
+   if(!lines.length){addonNext[String(addon.id)]=true;continue}
+   const result=calculate(lines);addonNext[String(addon.id)]=result.available;addonRemaining[String(addon.id)]=result.remaining;
+  }
+  INVENTORY_VARIANT_AVAILABILITY=next;INVENTORY_VARIANT_REMAINING=remaining;
+  INVENTORY_ADDON_AVAILABILITY=addonNext;INVENTORY_ADDON_REMAINING=addonRemaining;
   if(document.getElementById('page-pos')?.classList.contains('active'))renderPOS();
  }catch(e){console.warn('Could not refresh ingredient availability:',e)}
  finally{INVENTORY_VARIANT_REFRESHING=false}
 }
 function inventoryVariantAvailable(productId,size){return INVENTORY_VARIANT_AVAILABILITY[String(productId)+'|'+String(size)]!==false}
 function inventoryVariantRemaining(productId,size){const key=String(productId)+'|'+String(size);return Object.prototype.hasOwnProperty.call(INVENTORY_VARIANT_REMAINING,key)?INVENTORY_VARIANT_REMAINING[key]:null}
+function inventoryAddonAvailable(addonId){return INVENTORY_ADDON_AVAILABILITY[String(addonId)]!==false}
+function inventoryAddonRemaining(addonId){const key=String(addonId);return Object.prototype.hasOwnProperty.call(INVENTORY_ADDON_REMAINING,key)?INVENTORY_ADDON_REMAINING[key]:null}
 function subscribeInventoryAvailability(){
  if(INVENTORY_VARIANT_CHANNEL||!supabaseClient)return;
  INVENTORY_VARIANT_CHANNEL=supabaseClient.channel('hibi-inventory-availability')
@@ -2058,11 +2071,12 @@ function renderPOS(){
 
   const grid = document.getElementById('product-grid');
   if(activeCategory==='Add-Ons'){
-    grid.innerHTML = ADDONS.filter(a=>a.active!==false).map(a=>`
-      <button class="product-card ${a.active?'':'unavailable'}" data-addon="${a.id}">
-        <div class="pname">${esc(a.name)}</div>
-        <div class="pprice">${PESO(a.price)}</div>
-      </button>`).join('') || emptyGridMsg('No add-ons configured.');
+    grid.innerHTML = ADDONS.filter(a=>a.active!==false).map(a=>{const remaining=inventoryAddonRemaining(a.id),soldOut=!inventoryAddonAvailable(a.id);return `
+      <button class="product-card ${soldOut?'sold-out':''}" data-addon="${a.id}" ${soldOut?'disabled':''}>
+        ${soldOut?'<span class="soldout-ribbon">SOLD OUT</span>':''}<div class="pname">${esc(a.name)}</div>
+        <div class="pprice">${soldOut?'Unavailable':PESO(a.price)}</div>
+        ${remaining!==null?`<div class="product-stock-count">${remaining} left</div>`:''}
+      </button>`}).join('') || emptyGridMsg('No add-ons configured.');
     grid.querySelectorAll('[data-addon]').forEach(b=>b.addEventListener('click',()=>{
       addStandaloneAddonNote();
     }));
@@ -2163,12 +2177,12 @@ function openProductModal(pr){
         ${pr.addonEligible && ADDONS.some(a=>a.active) ? `
           <div class="section-title" style="margin-top:16px;">Add-ons (optional)</div>
           <div id="addon-list">
-            ${ADDONS.filter(a=>a.active).map(a=>`
+            ${ADDONS.filter(a=>a.active).map(a=>{const remaining=inventoryAddonRemaining(a.id),available=inventoryAddonAvailable(a.id);return `
               <div class="addon-row">
-                <input type="checkbox" id="ad-${a.id}" data-addon="${a.id}" ${chosenAddons.has(a.id)?'checked':''}>
-                <label for="ad-${a.id}">${esc(a.name)}</label>
+                <input type="checkbox" id="ad-${a.id}" data-addon="${a.id}" ${chosenAddons.has(a.id)?'checked':''} ${available?'':'disabled'}>
+                <label for="ad-${a.id}">${esc(a.name)}${remaining!==null?` <small class="size-stock-count">· ${remaining} left</small>`:''}${available?'':' <small class="size-stock-count">· Sold out</small>'}</label>
                 <span class="aprice">+${PESO(orderChannel==='GrabFood'?(a.grabPrice??a.price):a.price)}</span>
-              </div>`).join('')}
+              </div>`}).join('')}
           </div>` : ''}
         <div class="section-title" style="margin-top:16px;">Quantity</div>
         <div class="qty-stepper">
@@ -2202,7 +2216,7 @@ function openProductModal(pr){
     if(minus) minus.onclick=()=>{ if(qty>1) qty--; document.getElementById('qty-n').textContent=qty; };
     if(plus) plus.onclick=()=>{ qty++; document.getElementById('qty-n').textContent=qty; };
     document.querySelectorAll('#addon-list input[type=checkbox]').forEach(cb=>{
-      cb.onchange=()=>{ cb.checked ? chosenAddons.add(cb.dataset.addon) : chosenAddons.delete(cb.dataset.addon); };
+      cb.onchange=()=>{if(cb.checked&&!inventoryAddonAvailable(cb.dataset.addon)){cb.checked=false;toast('This add-on is sold out.');return;}cb.checked ? chosenAddons.add(cb.dataset.addon) : chosenAddons.delete(cb.dataset.addon);};
     });
     document.getElementById('modal-add').onclick = ()=>{
       const addonObjs = ADDONS.filter(a=>chosenAddons.has(a.id));
