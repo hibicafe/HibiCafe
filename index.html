@@ -630,9 +630,14 @@ details[open]>:not(summary){animation:details-in var(--motion-normal) var(--moti
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 17v-4M12 17V7M17 17v-7"/></svg>
           <span><strong>Monthly Performance</strong><small>Trends &amp; month totals</small></span>
         </button>
+        <button type="button" class="report-view-option" data-report-view="yearly" aria-pressed="false" aria-controls="yearly-performance-content" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15v-4M12 15V7M16 15V9M20 15V4"/></svg>
+          <span><strong>Yearly Performance</strong><small>Annual totals &amp; monthly trends</small></span>
+        </button>
       </div>
       <div id="reports-content"></div>
       <div id="monthly-performance-content" style="display:none;"></div>
+      <div id="yearly-performance-content" style="display:none;"></div>
     </div>
   </div>
 
@@ -969,6 +974,7 @@ let expensesFilter = {mode:'today', date: businessDayKey(), start: businessDayKe
 let OWNER_EXPENSES = [];
 let reportsFilter = {mode:'today', date: businessDayKey(), start: businessDayKey(), end: businessDayKey()};
 let monthlyPerformanceMonth = businessDayKey().slice(0,7);
+let yearlyPerformanceYear = Number(businessDayKey().slice(0,4));
 let PRODUCT_AVAILABILITY = {};
 let SHIFTS = [];
 let shiftsFilterDate = businessDayKey();
@@ -3542,23 +3548,25 @@ async function renderReports(){
     const today=businessDayKey();
     reportsFilter={mode:'today',date:today,start:today,end:today};
   }
-  const monthly=reportsView==='monthly';
+  const monthly=reportsView==='monthly',yearly=reportsView==='yearly',performance=monthly||yearly;
   document.querySelectorAll('#report-view-switcher [data-report-view]').forEach(button=>{
     const selected=button.dataset.reportView===reportsView;
-    button.style.display=button.dataset.reportView==='monthly' && !isSuperuser()?'none':'';
+    button.style.display=(button.dataset.reportView==='daily'||isSuperuser())?'':'none';
     button.classList.toggle('is-selected',selected);
     button.setAttribute('aria-pressed',String(selected));
     button.onclick=()=>{
-      if(button.dataset.reportView==='monthly' && !isSuperuser()) return;
+      if(button.dataset.reportView!=='daily'&&!isSuperuser()) return;
       reportsView=button.dataset.reportView;
       renderReports();
-      replayMotion(document.getElementById(reportsView==='monthly'?'monthly-performance-content':'reports-content'));
+      replayMotion(document.getElementById(reportsView==='monthly'?'monthly-performance-content':reportsView==='yearly'?'yearly-performance-content':'reports-content'));
     };
   });
-  document.getElementById('reports-content').style.display=monthly?'none':'';
+  document.getElementById('reports-content').style.display=performance?'none':'';
   document.getElementById('monthly-performance-content').style.display=monthly?'':'none';
-  if(!isSuperuser()) document.getElementById('monthly-performance-content').replaceChildren();
+  document.getElementById('yearly-performance-content').style.display=yearly?'':'none';
+  if(!isSuperuser()){document.getElementById('monthly-performance-content').replaceChildren();document.getElementById('yearly-performance-content').replaceChildren();}
   if(monthly){ renderMonthlyPerformance(); return; }
+  if(yearly){ renderYearlyPerformance(); return; }
   const orders = ordersForReportFilter();
   const m = computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
   [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
