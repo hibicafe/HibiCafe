@@ -3334,7 +3334,7 @@ function renderDashboard(){
         <table>
           <thead><tr><th>Method</th><th class="num">Orders</th><th class="num">Sales</th></tr></thead>
           <tbody>
-            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg[pm]?.sales||0)}</td></tr>`).join('')}
+            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg?.[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg?.[pm]?.sales||0)}</td></tr>`).join('')}
             <tr class="total-row"><td>Total</td><td class="num">${m.totalTx}</td><td class="num">${PESO(m.totalSales)}</td></tr>
           </tbody>
         </table>
@@ -3634,7 +3634,7 @@ async function renderReports(){
         <table>
           <thead><tr><th>Method</th><th class="num">Transactions</th><th class="num">Sales</th></tr></thead>
           <tbody>
-            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg[pm]?.sales||0)}</td></tr>`).join('')}
+            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg?.[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg?.[pm]?.sales||0)}</td></tr>`).join('')}
             <tr style="font-weight:700;"><td>Total</td><td class="num">${m.totalTx}</td><td class="num">${PESO(m.totalSales)}</td></tr>
           </tbody>
         </table>
@@ -4004,7 +4004,7 @@ function buildDailyEmailReport(dateKey, rangeLabel, m, orders, expenses, expense
     totalTransactions: Number(m.totalTx)||0, transactions: Number(m.totalTx)||0,
     cups: Number(m.cups)||0, numberOfCups: Number(m.cups)||0, foodItems: Number(m.foodItems)||0,
     cashSales: Number(undefined?.sales||0), gcashSales: Number(undefined?.sales||0), grabFoodSales: Number(undefined?.sales||0),
-    paymentBreakdown: ['Cash','GCash','GrabFood'].map(method=>({method,transactions:Number(m.pmAgg[method]?.count||0),sales:Number(m.pmAgg[method]?.sales||0)})),
+    paymentBreakdown: ['Cash','GCash','GrabFood'].map(method=>({method,transactions:Number(m.pmAgg?.[method]?.count||0),sales:Number(m.pmAgg?.[method]?.sales||0)})),
     openingCash: Number(eod?.opening)||0, startingCash: Number(eod?.opening)||0,
     expenses: Number(expenseTotal)||0, totalExpenses: Number(expenseTotal)||0,
     actualCash: Number(eod?.actual)||0, actualCashCounted: Number(eod?.actual)||0,
