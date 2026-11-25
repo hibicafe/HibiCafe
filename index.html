@@ -3548,23 +3548,25 @@ async function renderReports(){
     const today=businessDayKey();
     reportsFilter={mode:'today',date:today,start:today,end:today};
   }
-  const monthly=reportsView==='monthly';
+  const monthly=reportsView==='monthly',yearly=reportsView==='yearly',performance=monthly||yearly;
   document.querySelectorAll('#report-view-switcher [data-report-view]').forEach(button=>{
     const selected=button.dataset.reportView===reportsView;
-    button.style.display=button.dataset.reportView==='monthly' && !isSuperuser()?'none':'';
+    button.style.display=(button.dataset.reportView==='daily'||isSuperuser())?'':'none';
     button.classList.toggle('is-selected',selected);
     button.setAttribute('aria-pressed',String(selected));
     button.onclick=()=>{
-      if(button.dataset.reportView==='monthly' && !isSuperuser()) return;
+      if(button.dataset.reportView!=='daily'&&!isSuperuser()) return;
       reportsView=button.dataset.reportView;
       renderReports();
-      replayMotion(document.getElementById(reportsView==='monthly'?'monthly-performance-content':'reports-content'));
+      replayMotion(document.getElementById(reportsView==='monthly'?'monthly-performance-content':reportsView==='yearly'?'yearly-performance-content':'reports-content'));
     };
   });
-  document.getElementById('reports-content').style.display=monthly?'none':'';
+  document.getElementById('reports-content').style.display=performance?'none':'';
   document.getElementById('monthly-performance-content').style.display=monthly?'':'none';
-  if(!isSuperuser()) document.getElementById('monthly-performance-content').replaceChildren();
+  document.getElementById('yearly-performance-content').style.display=yearly?'':'none';
+  if(!isSuperuser()){document.getElementById('monthly-performance-content').replaceChildren();document.getElementById('yearly-performance-content').replaceChildren();}
   if(monthly){ renderMonthlyPerformance(); return; }
+  if(yearly){ renderYearlyPerformance(); return; }
   const orders = ordersForReportFilter();
   const m = computeMetrics(orders,p1Refunds(...p1Range(reportsFilter)));
   [m.reportStart,m.reportEnd]=p1Range(reportsFilter);
