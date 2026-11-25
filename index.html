@@ -676,11 +676,12 @@ details[open]>:not(summary){animation:details-in var(--motion-normal) var(--moti
 const PESO = n => '₱' + (Math.round(n*100)/100).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const uid = () => Math.random().toString(36).slice(2,10);
 const todayStr = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const nowTimeStr = () => new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
+const nowTimeStr = () => new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date());
 function calendarDateForTimestamp(ts=new Date()){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ts)); }
 function shiftCalendarDate(dateKey,delta){ const d=new Date(dateKey+'T12:00:00+08:00'); d.setUTCDate(d.getUTCDate()+delta); return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(d); }
-function businessDayKey(ts=new Date()){ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',hour12:false}).formatToParts(new Date(ts)); const hour=Number(parts.find(p=>p.type==='hour')?.value||0); const cal=calendarDateForTimestamp(ts); return hour<3 ? shiftCalendarDate(cal,-1) : cal; }
-function isBusinessDayClosing(ts=new Date()){ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',hour12:false}).formatToParts(new Date(ts)); return Number(parts.find(p=>p.type==='hour')?.value||0)<3; }
+function manilaHour(ts=new Date()){ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Manila',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date(ts)); return Number(parts.find(p=>p.type==='hour')?.value||0); }
+function businessDayKey(ts=new Date()){ const hour=manilaHour(ts); const cal=calendarDateForTimestamp(ts); return hour<3 ? shiftCalendarDate(cal,-1) : cal; }
+function isBusinessDayClosing(ts=new Date()){ return manilaHour(ts)<3; }
 function businessDayStatus(){ return {date:businessDayKey(),status:isBusinessDayClosing()?'CLOSING':'OPEN'}; }
 function isLateEntryForBusinessDate(dateKey,ts=new Date()){ return calendarDateForTimestamp(ts)!==dateKey; }
 function isDateLocked(dateKey){ return !!(EOD && EOD[dateKey] && EOD[dateKey].locked); }
