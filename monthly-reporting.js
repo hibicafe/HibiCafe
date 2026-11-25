@@ -115,7 +115,11 @@ async function renderYearlyPerformance(){
  el.innerHTML='<div class="card" style="padding:24px;">Loading yearly performance…</div>';
  try{
   await p1Load(start,end);
-  const months=Array.from({length:12},(_,i)=>p2MonthData(`${year}-${String(i+1).padStart(2,'0')}`));
+  const months=Array.from({length:12},(_,i)=>{
+   const d=p2MonthData(`${year}-${String(i+1).padStart(2,'0')}`);
+   const agg=d.m?.pmAgg||{};
+   return {ym:d.ym,gross:d.grossSales,discounts:d.discountTotal,net:d.m?.totalSales||0,refunds:d.m?.refundTotal||0,tx:d.m?.totalTx||0,cups:d.m?.cups||0,food:d.m?.foodItems||0,afterDiscount:d.m?.grossSales||0,exp:d.dailyExpensesTotal,opex:d.opexTotal,tracked:d.trackedCosts,afterTracked:d.netAfterTracked,cashIn:d.cashIn,cashOut:d.cashOut,payment:{Cash:Number(agg.Cash?.sales||0),GCash:Number(agg.GCash?.sales||0),GrabFood:Number(agg.GrabFood?.sales||0)}};
+  });
   const add=k=>months.reduce((n,x)=>n+Number(x[k]||0),0);
   const payment={Cash:months.reduce((n,x)=>n+Number(x.payment.Cash||0),0),GCash:months.reduce((n,x)=>n+Number(x.payment.GCash||0),0),GrabFood:months.reduce((n,x)=>n+Number(x.payment.GrabFood||0),0)};
   const gross=add('gross'),discounts=add('discounts'),net=add('net'),refunds=add('refunds'),tx=add('tx'),cups=add('cups'),food=add('food'),exp=add('exp'),opex=add('opex'),tracked=add('tracked'),after=add('afterTracked'),cashIn=add('cashIn'),cashOut=add('cashOut');
