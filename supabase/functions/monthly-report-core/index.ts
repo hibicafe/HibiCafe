@@ -12,7 +12,7 @@ async function loadYear(year:number){
   if(!Number.isInteger(year)||year<2000||year>manila().year)throw Error("Invalid report year.");
   const months:any[]=[];for(let m=1;m<=12;m++){const ym=`${year}-${String(m).padStart(2,"0")}`;months.push(await load(ym));}
   const sum=(k:string)=>months.reduce((n:any,x:any)=>n+Number(x[k]||0),0);
-  const payment={Cash:sum("payment.Cash"),GCash:sum("payment.GCash"),GrabFood:sum("payment.GrabFood")};
+  const payment={Cash:months.reduce((n,x)=>n+Number(x.payment.Cash||0),0),GCash:months.reduce((n,x)=>n+Number(x.payment.GCash||0),0),GrabFood:months.reduce((n,x)=>n+Number(x.payment.GrabFood||0),0)};
   const products=new Map(),discounts=new Map();
   for(const x of months){for(const p of x.products){const q=products.get(p.name)||{name:p.name,isDrink:p.isDrink,qty:0,sales:0};q.qty+=p.qty;q.sales+=p.sales;products.set(p.name,q);}for(const d of x.discountTypes){const q=discounts.get(d.type)||{type:d.type,orders:0,amount:0};q.orders+=d.orders;q.amount+=d.amount;discounts.set(d.type,q);}}
   const daily=months.flatMap(x=>x.daily);
