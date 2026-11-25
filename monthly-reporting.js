@@ -48,7 +48,7 @@ function p2MonthData(ym){
   const co=dayMoves.filter(x=>x.type==='Out').reduce((n,x)=>n+Number(x.amount||0),0);
   const gross=dayPaid.reduce((n,o)=>n+Number(o.subtotal||0),0);
   const disc=dayPaid.reduce((n,o)=>n+p2EffectiveDiscount(o),0);
-  daily.push({dateKey,transactions:dm.totalTx,cups:dm.cups,foodItems:dm.foodItems,gross,discounts:disc,salesAfterDiscounts:dm.grossSales,refunds:dm.refundTotal,netSales:dm.totalSales,cash:dm.pmAgg.Cash?.sales||0,gcash:dm.pmAgg.GCash?.sales||0,grab:dm.pmAgg.GrabFood?.sales||0,cashIn:ci,cashOut:co,dailyExpenses:exp,opex,netAfterTracked:dm.totalSales-exp-opex-dm.estimatedFees});
+  daily.push({dateKey,transactions:dm.totalTx,cups:dm.cups,foodItems:dm.foodItems,gross,discounts:disc,salesAfterDiscounts:dm.grossSales,refunds:dm.refundTotal,netSales:dm.totalSales,cash:dm.pmAgg?.Cash?.sales||0,gcash:dm.pmAgg?.GCash?.sales||0,grab:dm.pmAgg?.GrabFood?.sales||0,cashIn:ci,cashOut:co,dailyExpenses:exp,opex,netAfterTracked:dm.totalSales-exp-opex-dm.estimatedFees});
  }
  return {ym,start,end,orders,paid,m,grossSales,discountTotal,dailyExpensesTotal,opexTotal,trackedCosts,netAfterTracked,cashIn,cashOut,discounts,daily,activeDays:new Set(paid.map(o=>o.date)).size};
 }
@@ -91,7 +91,7 @@ renderMonthlyPerformance=async function(){
  const el=document.getElementById('monthly-performance-content');
  const ym=monthlyPerformanceMonth||businessDayKey().slice(0,7);const {start,end}=monthDateRange(ym);
  el.innerHTML='<div class="card" style="padding:24px;">Loading monthly performance…</div>';
- try{await p1Load(start,end);const x=p2MonthData(ym),m=x.m;const totalCash=m.pmAgg.Cash?.sales||0,totalGcash=m.pmAgg.GCash?.sales||0,totalGrab=m.pmAgg.GrabFood?.sales||0;
+ try{await p1Load(start,end);const x=p2MonthData(ym),m=x.m;const totalCash=m.pmAgg?.Cash?.sales||0,totalGcash=m.pmAgg?.GCash?.sales||0,totalGrab=m.pmAgg?.GrabFood?.sales||0;
  const topQty=m.bestByQty,topRev=m.bestByRevenue;const discountEntries=Object.entries(x.discounts).sort((a,b)=>b[1].amount-a[1].amount);
  const dailyTotals=x.daily.reduce((a,r)=>{['transactions','cups','gross','discounts','netSales','cash','gcash','grab','cashIn','cashOut','dailyExpenses','opex','netAfterTracked'].forEach(k=>a[k]+=Number(r[k]||0));return a;},{transactions:0,cups:0,gross:0,discounts:0,netSales:0,cash:0,gcash:0,grab:0,cashIn:0,cashOut:0,dailyExpenses:0,opex:0,netAfterTracked:0});
  el.innerHTML=`<div class="page-title"><div><h1>Monthly Performance</h1><div class="psub">Business performance for ${esc(formatMonthLabel(ym))}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><input type="month" id="monthly-performance-month" value="${escAttr(ym)}" max="${businessDayKey().slice(0,7)}"><button class="btn btn-secondary" id="monthly-download-btn">Download Excel</button><button class="btn btn-primary" id="monthly-email-btn">Generate &amp; Email Report</button></div></div>
