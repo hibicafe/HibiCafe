@@ -125,7 +125,7 @@ shiftFinancialSummary=function(shift,endIso=null){
  const end=endIso||shift.closedAt||new Date().toISOString();
  const orders=ORDERS.filter(o=>o.date===shift.businessDate&&isWithinShift(o.timestamp,shift,end));
  const refunds=p1Refunds(shift.businessDate).filter(r=>isWithinShift(r.created_at,shift,end));
- const m=computeMetrics(orders,refunds),cashSales=m.pmAgg.Cash?.sales||0,gcashSales=m.pmAgg.GCash?.sales||0,grabSales=m.pmAgg.GrabFood?.sales||0;
+ const m=computeMetrics(orders,refunds),cashSales=m.pmAgg?.Cash?.sales||0,gcashSales=m.pmAgg?.GCash?.sales||0,grabSales=m.pmAgg?.GrabFood?.sales||0;
  const expenses=EXPENSES.filter(x=>x.date===shift.businessDate&&x.status!=='Voided'&&isWithinShift(x.timestamp,shift,end)).reduce((n,x)=>n+x.amount,0);
  const movements=CASH_MOVEMENTS.filter(x=>x.date===shift.businessDate&&x.status!=='Voided'&&isWithinShift(x.timestamp,shift,end));
  const cashIn=movements.filter(x=>x.type==='In').reduce((n,x)=>n+x.amount,0),cashOut=movements.filter(x=>x.type==='Out').reduce((n,x)=>n+x.amount,0);

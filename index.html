@@ -3143,8 +3143,8 @@ function fundBalances(){
     for(const x of EXPENSES){if(isActive(x)&&stamp(x)>anchorTime)cash-=amount(x.amount);}
     for(const x of OWNER_EXPENSES){if(isActive(x)&&x.paymentMethod==='Cash'&&stamp(x)>anchorTime)cash-=amount(x.amount);}
     const recentMetrics=computeMetrics(recentOrders,recentRefunds);
-    gcashSales=Number(recentMetrics.pmAgg.GCash?.sales)||0;
-    grabSales=Number(recentMetrics.pmAgg.GrabFood?.sales)||0;
+    gcashSales=Number(recentMetrics.pmAgg?.GCash?.sales)||0;
+    grabSales=Number(recentMetrics.pmAgg?.GrabFood?.sales)||0;
     const orderById=new Map(recentOrders.map(o=>[String(o.id),o]));
     const gcashRefunds=recentRefunds.reduce((sum,r)=>{
       if(r.gcash_amount!=null) return sum+amount(r.gcash_amount);
@@ -3213,14 +3213,14 @@ function fundBalances(){
   const allRefundRows=(typeof REFUNDS!=='undefined'&&Array.isArray(REFUNDS))?REFUNDS:[];
   const reportRefunds=allRefundRows.filter(r=>!r.voided_at&&r.business_date>='1900-01-01'&&r.business_date<=businessDayKey());
   const fundMetrics=computeMetrics(ORDERS,reportRefunds);
-  const gcashSales=Number(fundMetrics.pmAgg.GCash?.sales)||0;
+  const gcashSales=Number(fundMetrics.pmAgg?.GCash?.sales)||0;
   const gcashOpex=OWNER_EXPENSES.filter(x=>isActive(x)&&x.paymentMethod==='GCash')
     .reduce((sum,x)=>sum+amount(x.amount),0);
   result.GCash=gcashSales-gcashOpex;
 
   // Bank = net GrabFood sales less the fixed 25% platform fee, then bank-transfer OPEX.
   // Settlements and opening balances are not added again because that would double-count sales.
-  const grabSales=Number(fundMetrics.pmAgg.GrabFood?.sales)||0;
+  const grabSales=Number(fundMetrics.pmAgg?.GrabFood?.sales)||0;
   const bankOpex=OWNER_EXPENSES.filter(x=>isActive(x)&&x.paymentMethod==='Bank Transfer')
     .reduce((sum,x)=>sum+amount(x.amount),0);
   result.Bank=grabSales-(grabSales*0.25)-bankOpex;
@@ -3334,7 +3334,7 @@ function renderDashboard(){
         <table>
           <thead><tr><th>Method</th><th class="num">Orders</th><th class="num">Sales</th></tr></thead>
           <tbody>
-            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg[pm]?.sales||0)}</td></tr>`).join('')}
+            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg?.[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg?.[pm]?.sales||0)}</td></tr>`).join('')}
             <tr class="total-row"><td>Total</td><td class="num">${m.totalTx}</td><td class="num">${PESO(m.totalSales)}</td></tr>
           </tbody>
         </table>
@@ -3395,9 +3395,9 @@ function renderMonthlyPerformance(){
   const m=computeMetrics(completed,p1Refunds(start,end));
   const expenseTotal=monthExpenses.reduce((sum,x)=>sum+Number(x.amount||0),0);
   const opexTotal=monthOwnerExpenses.reduce((sum,x)=>sum+Number(x.amount||0),0);
-  const totalCash=m.pmAgg['Cash']?.sales||0;
-  const totalGcash=m.pmAgg['GCash']?.sales||0;
-  const totalGrab=m.pmAgg['GrabFood']?.sales||0;
+  const totalCash=undefined?.sales||0;
+  const totalGcash=undefined?.sales||0;
+  const totalGrab=undefined?.sales||0;
   const netAfterDailyExpenses=m.estimatedProceeds-expenseTotal;
   const netAfterAllExpenses=netAfterDailyExpenses-opexTotal;
   const activeDays=new Set(completed.filter(o=>!p1IsCancelled(o)&&!isUnpaidOnlineOrder(o)).map(o=>o.date)).size;
@@ -3412,9 +3412,9 @@ function renderMonthlyPerformance(){
     const dayOpex=monthOwnerExpenses.filter(x=>x.date===dateKey);
     const opex=dayOpex.reduce((sum,x)=>sum+Number(x.amount||0),0);
     const eod=EOD[dateKey]||{};
-    const cashSales=dm.pmAgg['Cash']?.sales||0;
-    const gcashSales=dm.pmAgg['GCash']?.sales||0;
-    const grabSales=dm.pmAgg['GrabFood']?.sales||0;
+    const cashSales=undefined?.sales||0;
+    const gcashSales=undefined?.sales||0;
+    const grabSales=undefined?.sales||0;
     const opening=eod.opening!=null ? Number(eod.opening) : Number(openingCashForDate(dateKey)||0);
     const cashIn=Number(eod.cashIn||0);
     const cashOut=Number(eod.cashOut||0);
@@ -3634,7 +3634,7 @@ async function renderReports(){
         <table>
           <thead><tr><th>Method</th><th class="num">Transactions</th><th class="num">Sales</th></tr></thead>
           <tbody>
-            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg[pm]?.sales||0)}</td></tr>`).join('')}
+            ${['Cash','GCash','GrabFood'].map(pm=>`<tr><td>${pm}</td><td class="num">${m.pmAgg?.[pm]?.count||0}</td><td class="num">${PESO(m.pmAgg?.[pm]?.sales||0)}</td></tr>`).join('')}
             <tr style="font-weight:700;"><td>Total</td><td class="num">${m.totalTx}</td><td class="num">${PESO(m.totalSales)}</td></tr>
           </tbody>
         </table>
@@ -3757,8 +3757,8 @@ async function renderReports(){
   function recalcEod(){
     const opening = parseFloat(document.getElementById('eod-opening').value)||0;
     const actual = document.getElementById('eod-actual').value;
-    const cashSales = m.pmAgg['Cash']?.sales || 0;
-    const gcashSales = m.pmAgg['GCash']?.sales || 0;
+    const cashSales = undefined?.sales || 0;
+    const gcashSales = undefined?.sales || 0;
     const expected = opening + drawerTotals.in + cashSales - drawerTotals.out - expenseTotal;
     const calcDiv = document.getElementById('eod-calc');
     if(actual===''){
@@ -3788,8 +3788,8 @@ async function renderReports(){
       const opening = parseFloat(document.getElementById('eod-opening').value)||0;
       const actualValue = document.getElementById('eod-actual').value;
       const actual = actualValue==='' ? null : parseFloat(actualValue);
-      const cashSales = m.pmAgg['Cash']?.sales || 0;
-      const gcashSales = m.pmAgg['GCash']?.sales || 0;
+      const cashSales = undefined?.sales || 0;
+      const gcashSales = undefined?.sales || 0;
       const expected = opening + drawerTotals.in + cashSales - drawerTotals.out - expenseTotal;
       const variance = actual===null ? null : actual - expected;
       const varianceReason=(document.getElementById('eod-variance-reason')?.value||'').trim();
@@ -3875,15 +3875,15 @@ async function exportReportExcel(m, rangeLabel, orders, expenses, expenseTotal, 
       ['Estimated Grab Fees', m.estimatedFees],
       ['Owner / Operational Expenses', m.opex||0],
       ['Estimated Balance after expenses', netSales],
-      ['Cash Sales', m.pmAgg['Cash']?.sales || 0],
-      ['GCash Sales', m.pmAgg['GCash']?.sales || 0],
-      ['GrabFood Sales', m.pmAgg['GrabFood']?.sales || 0],
+      ['Cash Sales', undefined?.sales || 0],
+      ['GCash Sales', undefined?.sales || 0],
+      ['GrabFood Sales', undefined?.sales || 0],
       ['Number of Cups', m.cups],
       ['Starting Cash', eod?.opening ?? ''],
       ['Expenses', expenseTotal],
       ['Actual Cash Counted', eod?.actual ?? ''],
-      ['Expected Cash', eod?.expected ?? ((eod?.opening!=null) ? (eod.opening + (m.pmAgg['Cash']?.sales||0) + (eod.cashIn||0) - (eod.cashOut||0) - expenseTotal) : '')],
-      ['Cash Variance', eod?.variance ?? ((eod?.actual!=null && eod?.opening!=null) ? (eod.actual - (eod.opening + (m.pmAgg['Cash']?.sales||0) + (eod.cashIn||0) - (eod.cashOut||0) - expenseTotal)) : '')],
+      ['Expected Cash', eod?.expected ?? ((eod?.opening!=null) ? (eod.opening + (undefined?.sales||0) + (eod.cashIn||0) - (eod.cashOut||0) - expenseTotal) : '')],
+      ['Cash Variance', eod?.variance ?? ((eod?.actual!=null && eod?.opening!=null) ? (eod.actual - (eod.opening + (undefined?.sales||0) + (eod.cashIn||0) - (eod.cashOut||0) - expenseTotal)) : '')],
       ['Actual Funds - Cash', fundSnapshot?.cash ?? (options.singleDay===false?'Select a single date':'Pending reconciliation')],
       ['Actual Funds - GCash', fundSnapshot?.gcash ?? (options.singleDay===false?'Select a single date':'Pending reconciliation')],
       ['Actual Funds - Bank', fundSnapshot?.bank ?? (options.singleDay===false?'Select a single date':'Pending reconciliation')],
@@ -4003,8 +4003,8 @@ function buildDailyEmailReport(dateKey, rangeLabel, m, orders, expenses, expense
     totalSales: Number(m.totalSales)||0,
     totalTransactions: Number(m.totalTx)||0, transactions: Number(m.totalTx)||0,
     cups: Number(m.cups)||0, numberOfCups: Number(m.cups)||0, foodItems: Number(m.foodItems)||0,
-    cashSales: Number(m.pmAgg['Cash']?.sales||0), gcashSales: Number(m.pmAgg['GCash']?.sales||0), grabFoodSales: Number(m.pmAgg['GrabFood']?.sales||0),
-    paymentBreakdown: ['Cash','GCash','GrabFood'].map(method=>({method,transactions:Number(m.pmAgg[method]?.count||0),sales:Number(m.pmAgg[method]?.sales||0)})),
+    cashSales: Number(undefined?.sales||0), gcashSales: Number(undefined?.sales||0), grabFoodSales: Number(undefined?.sales||0),
+    paymentBreakdown: ['Cash','GCash','GrabFood'].map(method=>({method,transactions:Number(m.pmAgg?.[method]?.count||0),sales:Number(m.pmAgg?.[method]?.sales||0)})),
     openingCash: Number(eod?.opening)||0, startingCash: Number(eod?.opening)||0,
     expenses: Number(expenseTotal)||0, totalExpenses: Number(expenseTotal)||0,
     actualCash: Number(eod?.actual)||0, actualCashCounted: Number(eod?.actual)||0,
